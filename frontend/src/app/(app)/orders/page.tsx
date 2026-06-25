@@ -13,9 +13,11 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
 import { formatRupiah, formatRelative } from "@/lib/format";
 import { STATUS_FLOW, STATUS_LABEL } from "@/lib/constants";
+import { useToast } from "@/components/ui/Toast";
 
 // ==========================================================
 // Daftar Order — dengan filter status & pencarian (nama/no hp/id).
+// Dilengkapi: Export PDF.
 // ==========================================================
 
 type Filter = OrderStatus | "semua";
@@ -25,6 +27,8 @@ export default function OrdersPage() {
   const [filter, setFilter] = useState<Filter>("semua");
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
+  const toast = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -50,21 +54,51 @@ export default function OrdersPage() {
 
   const countByStatus = (s: OrderStatus) => orders?.filter((o) => o.status === s).length ?? 0;
 
+  async function handleDownloadPdf() {
+    setDownloading(true);
+    try {
+      await api.downloadOrdersPdf({
+        status: filter !== "semua" ? filter : undefined,
+      });
+      toast.success("PDF berhasil diunduh.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal mengunduh PDF.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <>
       <AppHeader
         title="Daftar Order"
         subtitle={`${orders?.length ?? 0} order`}
         action={
-          <Link
-            href="/orders/new"
-            className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-brand-600 text-white hover:bg-brand-700"
-            aria-label="Tambah Order"
-          >
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path strokeLinecap="round" d="M12 5v14M5 12h14" />
-            </svg>
-          </Link>
+          <div className="flex gap-2">
+            <button
+              onClick={handleDownloadPdf}
+              disabled={downloading}
+              className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+              aria-label="Download PDF"
+            >
+              {downloading ? (
+                <Spinner size={16} className="text-white" />
+              ) : (
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              )}
+            </button>
+            <Link
+              href="/orders/new"
+              className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-brand-600 text-white hover:bg-brand-700"
+              aria-label="Tambah Order"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <path strokeLinecap="round" d="M12 5v14M5 12h14" />
+              </svg>
+            </Link>
+          </div>
         }
       />
 

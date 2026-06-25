@@ -50,6 +50,7 @@ export interface Order {
   total_harga: number; // dihitung: berat * harga_per_kilo
   status: OrderStatus;
   catatan?: string;
+  foto?: string; // path foto bukti cucian
   tgl_masuk: string; // ISO date
   tgl_selesai: string | null; // ISO date, terisi saat status = diambil
 }

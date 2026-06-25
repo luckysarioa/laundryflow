@@ -20,6 +20,7 @@ class Order extends Model
         'total_harga',
         'status',
         'catatan',
+        'foto',
         'tgl_masuk',
         'tgl_selesai',
     ];

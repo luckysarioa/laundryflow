@@ -72,7 +72,7 @@ export default function DashboardPage() {
               label="Cucian Diproses"
               value={String(stats.cucianDiproses)}
               hint="belum diambil"
-              tone="blue"
+              tone="brand"
               icon={<WashIcon />}
             />
             <StatCard

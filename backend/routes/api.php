@@ -33,19 +33,24 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('customers', [CustomerController::class, 'index']);
     Route::post('customers', [CustomerController::class, 'store']);
 
-    // Orders (sesuai kontrak: index, show, store, advance, status, notify)
+    // Orders (sesuai kontrak: index, show, store, update, advance, status, notify, foto)
     Route::get('orders', [OrderController::class, 'index']);
     Route::post('orders', [OrderController::class, 'store']);
     Route::get('orders/{order}', [OrderController::class, 'show']);
+    Route::patch('orders/{order}', [OrderController::class, 'update']);
     Route::patch('orders/{order}/advance', [OrderController::class, 'advance']);
     Route::patch('orders/{order}/status', [OrderController::class, 'setStatus']);
     Route::post('orders/{order}/notify', [OrderController::class, 'notify']);
+    Route::post('orders/{order}/foto', [OrderController::class, 'uploadFoto']);
+    Route::delete('orders/{order}/foto', [OrderController::class, 'deleteFoto']);
 
     // Dashboard
     Route::get('dashboard/stats', [DashboardController::class, 'stats']);
 
     // Reports
     Route::get('reports/revenue', [ReportController::class, 'revenue']);
+    Route::get('reports/revenue/pdf', [ReportController::class, 'revenuePdf']);
+    Route::get('reports/orders/pdf', [ReportController::class, 'ordersPdf']);
 
     // Transactions
     Route::get('transactions', [TransactionController::class, 'index']);

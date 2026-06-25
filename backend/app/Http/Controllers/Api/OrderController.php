@@ -11,6 +11,7 @@ use App\Support\OrderStatus;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
@@ -83,6 +84,86 @@ class OrderController extends Controller
 
             return new OrderResource($order);
         });
+    }
+
+    /**
+     * PATCH /orders/{order} — edit order (berat, layanan, catatan).
+     * Hanya boleh diedit jika status masih 'antrian' atau 'cuci'.
+     */
+    public function update(Request $request, Order $order): OrderResource
+    {
+        if (!in_array($order->status, [OrderStatus::Antrian->value, OrderStatus::Cuci->value])) {
+            return response()->json([
+                'message' => 'Order hanya bisa diedit saat status Antrian atau Cuci.',
+            ], 422);
+        }
+
+        $data = $request->validate([
+            'serviceId' => ['sometimes', 'exists:services,id'],
+            'total_berat' => ['sometimes', 'numeric', 'min:0.1'],
+            'catatan' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        DB::transaction(function () use ($data, $order) {
+            if (isset($data['serviceId'])) {
+                $order->service_id = $data['serviceId'];
+            }
+            if (isset($data['total_berat'])) {
+                $order->total_berat = $data['total_berat'];
+            }
+            if (array_key_exists('catatan', $data)) {
+                $order->catatan = $data['catatan'];
+            }
+
+            // Hitung ulang total_harga jika berat atau layanan berubah
+            if (isset($data['serviceId']) || isset($data['total_berat'])) {
+                $service = $order->service;
+                $order->total_harga = $service->hitungHarga((float) $order->total_berat);
+            }
+
+            $order->save();
+        });
+
+        $order->load(['customer', 'service']);
+
+        return new OrderResource($order);
+    }
+
+    /**
+     * POST /orders/{order}/foto — upload foto bukti cucian.
+     */
+    public function uploadFoto(Request $request, Order $order): OrderResource
+    {
+        $request->validate([
+            'foto' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        // Hapus foto lama jika ada
+        if ($order->foto) {
+            Storage::disk('public')->delete($order->foto);
+        }
+
+        $path = $request->file('foto')->store('orders/' . $order->id, 'public');
+        $order->update(['foto' => $path]);
+
+        $order->load(['customer', 'service']);
+
+        return new OrderResource($order);
+    }
+
+    /**
+     * DELETE /orders/{order}/foto — hapus foto bukti cucian.
+     */
+    public function deleteFoto(Order $order): OrderResource
+    {
+        if ($order->foto) {
+            Storage::disk('public')->delete($order->foto);
+            $order->update(['foto' => null]);
+        }
+
+        $order->load(['customer', 'service']);
+
+        return new OrderResource($order);
     }
 
     /**

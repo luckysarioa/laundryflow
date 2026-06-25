@@ -12,12 +12,14 @@ import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatCard } from "@/components/StatCard";
 import { formatRupiah } from "@/lib/format";
+import { useToast } from "@/components/ui/Toast";
 
 // ==========================================================
 // Laporan Keuangan — grafik pendapatan + ringkasan
 // dengan filter rentang tanggal. Sesuai PRD poin 4 & 6.
 //
 // Default: 14 hari terakhir. Preset cepat: 7/14/30 hari.
+// Dilengkapi: Export PDF.
 // ==========================================================
 
 function toISODate(d: Date): string {
@@ -35,6 +37,8 @@ export default function ReportsPage() {
   const [sampai, setSampai] = useState(toISODate(new Date()));
   const [data, setData] = useState<RevenuePoint[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
+  const toast = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -63,9 +67,40 @@ export default function ReportsPage() {
     setSampai(toISODate(new Date()));
   }
 
+  async function handleDownloadPdf() {
+    setDownloading(true);
+    try {
+      await api.downloadRevenuePdf(dari, sampai);
+      toast.success("PDF berhasil diunduh.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal mengunduh PDF.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <>
-      <AppHeader title="Laporan Keuangan" subtitle="Ringkasan pendapatan" />
+      <AppHeader
+        title="Laporan Keuangan"
+        subtitle="Ringkasan pendapatan"
+        action={
+          <button
+            onClick={handleDownloadPdf}
+            disabled={downloading}
+            className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50"
+            aria-label="Download PDF"
+          >
+            {downloading ? (
+              <Spinner size={16} className="text-white" />
+            ) : (
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            )}
+          </button>
+        }
+      />
 
       <div className="space-y-4">
         {/* Filter rentang tanggal */}
@@ -92,7 +127,7 @@ export default function ReportsPage() {
         {/* Ringkasan */}
         <div className="grid grid-cols-2 gap-3">
           <StatCard label="Total Pendapatan" value={formatRupiah(summary.total)} tone="emerald" icon={<MoneyIcon />} />
-          <StatCard label="Total Order" value={String(summary.orders)} hint="periode terpilih" tone="blue" icon={<ClipboardIcon />} />
+          <StatCard label="Total Order" value={String(summary.orders)} hint="periode terpilih" tone="slate" icon={<ClipboardIcon />} />
           <StatCard label="Rata-rata / Hari" value={formatRupiah(summary.avg)} hint="hari aktif" tone="purple" icon={<TrendIcon />} />
           <StatCard label="Pendapatan Tertinggi" value={formatRupiah(summary.peak)} hint="dalam sehari" tone="amber" icon={<PeakIcon />} />
         </div>
@@ -111,6 +146,19 @@ export default function ReportsPage() {
             <EmptyState title="Belum ada pendapatan" description="Tidak ada transaksi pada rentang tanggal ini." />
           )}
         </Card>
+
+        {/* Tombol Download PDF */}
+        <Button
+          size="lg"
+          fullWidth
+          loading={downloading}
+          onClick={handleDownloadPdf}
+        >
+          <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Download Laporan PDF
+        </Button>
       </div>
     </>
   );

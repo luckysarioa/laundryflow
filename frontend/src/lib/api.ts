@@ -148,6 +148,54 @@ export const api = {
     });
   },
 
+  async updateOrder(id: number, input: { serviceId?: number; total_berat?: number; catatan?: string | null }): Promise<Order> {
+    if (USE_MOCK) {
+      // Mock update - in real app this would call backend
+      const order = await mockGetOrder(id);
+      return { ...order, ...input, catatan: input.catatan ?? order.catatan };
+    }
+    return http<Order>(`/orders/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+  },
+
+  async uploadOrderFoto(id: number, foto: File): Promise<Order> {
+    if (USE_MOCK) {
+      // Mock upload - in real app this would call backend
+      const order = await mockGetOrder(id);
+      return { ...order, foto: URL.createObjectURL(foto) };
+    }
+    const formData = new FormData();
+    formData.append("foto", foto);
+    const token = getToken();
+    const res = await fetch(`${API_URL}/orders/${id}/foto`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+    if (!res.ok) {
+      let message = `Upload gagal (${res.status})`;
+      try {
+        const body = await res.json();
+        message = body.message ?? message;
+      } catch { /* ignore */ }
+      throw new Error(message);
+    }
+    return res.json() as Promise<Order>;
+  },
+
+  async deleteOrderFoto(id: number): Promise<Order> {
+    if (USE_MOCK) {
+      const order = await mockGetOrder(id);
+      return { ...order, foto: undefined };
+    }
+    return http<Order>(`/orders/${id}/foto`, { method: "DELETE" });
+  },
+
   // ----------------- DASHBOARD -----------------
 
   async getDashboardStats(): Promise<DashboardStats> {
@@ -162,6 +210,82 @@ export const api = {
     return http<RevenuePoint[]>(
       `/reports/revenue?dari=${dari}&sampai=${sampai}`,
     );
+  },
+
+  async downloadRevenuePdf(dari: string, sampai: string): Promise<void> {
+    if (USE_MOCK) {
+      // Mock download - create a simple text file
+      const content = `Laporan Pendapatan\nDari: ${dari}\nSampai: ${sampai}\n\nIni adalah mock PDF. Dalam versi produksi, ini akan mengunduh file PDF.`;
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `laporan-pendapatan-${dari}-sampai-${sampai}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      return;
+    }
+    const token = getToken();
+    const res = await fetch(`${API_URL}/reports/revenue/pdf?dari=${dari}&sampai=${sampai}`, {
+      headers: {
+        Accept: "application/pdf",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!res.ok) {
+      throw new Error(`Download gagal (${res.status})`);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `laporan-pendapatan-${dari}-sampai-${sampai}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+
+  async downloadOrdersPdf(filters?: { dari?: string; sampai?: string; status?: string }): Promise<void> {
+    if (USE_MOCK) {
+      const content = `Laporan Order\nFilter: ${JSON.stringify(filters)}\n\nIni adalah mock PDF. Dalam versi produksi, ini akan mengunduh file PDF.`;
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `laporan-order-${new Date().toISOString().slice(0, 10)}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      return;
+    }
+    const params = new URLSearchParams();
+    if (filters?.dari) params.set("dari", filters.dari);
+    if (filters?.sampai) params.set("sampai", filters.sampai);
+    if (filters?.status) params.set("status", filters.status);
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    const token = getToken();
+    const res = await fetch(`${API_URL}/reports/orders/pdf${qs}`, {
+      headers: {
+        Accept: "application/pdf",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!res.ok) {
+      throw new Error(`Download gagal (${res.status})`);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `laporan-order-${new Date().toISOString().slice(0, 10)}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   },
 
   // ----------------- TRANSACTIONS -----------------

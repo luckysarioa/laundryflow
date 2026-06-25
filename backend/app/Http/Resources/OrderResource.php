@@ -22,6 +22,7 @@ class OrderResource extends JsonResource
             'total_harga' => (int) $this->total_harga,
             'status' => $this->status,
             'catatan' => $this->catatan,
+            'foto' => $this->foto ? asset('storage/' . $this->foto) : null,
             'tgl_masuk' => $this->tgl_masuk?->toIso8601String(),
             'tgl_selesai' => $this->tgl_selesai?->toIso8601String(),
 
