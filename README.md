@@ -88,89 +88,106 @@ npm run dev                # http://localhost:3000
 
 ## 🚢 Deploy ke Coolify (Docker)
 
-LaundryFlow siap deploy sebagai satu stack Docker via `docker-compose.yml`:
-**6 service** — MySQL, Backend Laravel, Queue Worker, Frontend Next.js, Caddy reverse proxy, dan Backup otomatis.
+LaundryFlow siap deploy sebagai stack Docker via `docker-compose.yml`:
+**5 service** — MySQL, Backend Laravel, Queue Worker, Frontend Next.js, dan Backup otomatis.
 
-### Arsitektur deployment
+### Arsitektur deployment (Coolify proxy + 2 domain)
+
+Coolify sendiri menjalankan proxy (Traefik) yang menangani domain & HTTPS.
+Project ini **tidak punya reverse proxy internal** — Coolify routing 2 domain langsung:
 
 ```
-                ┌─────────────┐
-   Pengguna ──► │   Caddy     │  :80 / :443  (auto-HTTPS)
-                │  (proxy)    │
-                └──────┬──────┘
-            ┌──────────┼──────────┐
-            ▼                     ▼
-       /api/*  ──►  backend:80     frontend:3000  ──►  /*
-       (Laravel)                   (Next.js PWA)
-            │
-            ▼
-         db (MySQL 8)   ◄──  queue (worker WA)
-                 ▲
-                 └──  backup (cron mysqldump → volume backup_data)
+                    ┌──────────────────────┐
+   Pengguna ──────► │  Coolify Proxy       │  (terminate TLS, auto-HTTPS)
+                    │  (Traefik)           │
+                    └──────┬───────┬───────┘
+                           │       │
+              app.domain ──┘       └──── api.domain
+                           │              │
+                           ▼              ▼
+                    frontend:3000    backend:80
+                    (Next.js PWA)    (Laravel API)
+                                          │
+                                          ▼
+                       db (MySQL 8) ◄── queue (worker WA) ◄── backup (cron)
 ```
 
-**Keuntungan reverse proxy tunggal:** frontend & backend berbagi satu domain →
-tidak ada masalah CORS, dan `NEXT_PUBLIC_API_URL` bisa relatif (`/api`) sehingga
-tidak perlu rebuild saat ganti domain.
+**Konsekuensi 2-domain (penting):**
+- **CORS aktif** — frontend & backend beda origin → set `CORS_ALLOWED_ORIGINS` benar.
+- **Frontend butuh rebuild bila ganti domain API** — karena `NEXT_PUBLIC_*` Next.js adalah
+  build-time variable. Jadi tentukan domain API **sebelum** build pertama, dan rebuild
+  bila domain berubah.
 
 ### File deployment
-- `docker-compose.yml` — orkestrasi semua service
+- `docker-compose.yml` — orkestrasi semua service (5 service, 2 volume)
 - `frontend/Dockerfile` — Next.js standalone (image ramping)
-- `backend/Dockerfile` + `backend/docker-entrypoint.sh` — Laravel (auto migrate + keygen)
-- `proxy/Caddyfile` — routing `/api/*` → backend, sisanya → frontend
-- `.env.docker.example` — template environment
+- `backend/Dockerfile` + `backend/docker-entrypoint.sh` — Laravel (curl untuk healthcheck, auto migrate)
+- `.env.docker.example` — template environment lengkap
+- `backup/Dockerfile` + `backup/*.sh` — backup otomatis + restore
 
 ### Langkah deploy di Coolify
 
 **1. Push repo** ke Git (GitHub/GitLab/Gitea) yang terhubung ke Coolify Anda.
 
-**2. Buat resource baru di Coolify:**
-   - Pilih **New Resource → Docker Compose Empty** (atau dari repo Git)
-   - Coolify akan mendeteksi `docker-compose.yml` di root otomatis
+**2. Buat resource di Coolify:**
+   - **New Resource → Docker Compose** (dari repo Git atau Empty)
+   - Coolify otomatis deteksi `docker-compose.yml` di root.
 
-**3. Generate `APP_KEY`** (Laravel wajib punya):
+**3. Generate `APP_KEY`** (WAJIB, agar session/token tidak invalid tiap redeploy):
 ```bash
 docker run --rm php:8.2-cli php -r "echo 'base64:'.base64_encode(random_bytes(32));"
 ```
 Salin hasilnya (mis. `base64:xxxxxx...`).
 
-**4. Set Environment Variables** di Coolify (menu service → Environment Variables),
-   gunakan `.env.docker.example` sebagai panduan. WAJIB diisi:
+**4. Siapkan 2 subdomain** di DNS Anda, keduanya mengarah ke server Coolify:
+   - `app.domainanda.com` → frontend
+   - `api.domainanda.com` → backend API
+
+**5. Set Environment Variables** di Coolify (lihat `.env.docker.example` sebagai panduan). WAJIB:
 ```
-APP_KEY=base64:...           (hasil langkah 3)
+APP_KEY=base64:...                              # hasil langkah 3
+APP_URL=https://api.domainanda.com              # URL publik backend
+APP_ENV=production                              # seeder dilewati (tabel kosong)
 DB_PASSWORD=<password-kuat>
 DB_ROOT_PASSWORD=<password-kuat>
+CORS_ALLOWED_ORIGINS=https://app.domainanda.com # origin frontend (CORS)
+NEXT_PUBLIC_API_URL=https://api.domainanda.com/api  # build-time, butuh rebuild
 ```
 
-**5. Konfigurasi domain (pilih salah):**
+**6. Map domain di Coolify:**
+   - Pada service `frontend`, set Domain = `app.domainanda.com` → port `3000`.
+   - Pada service `backend`, set Domain = `api.domainanda.com` → port `8081` (host) / `80` (container).
+   - Coolify auto-issue sertifikat Let's Encrypt untuk keduanya.
 
-| Mode | Setting | Hasil |
-|---|---|---|
-| **Domain publik** (auto-HTTPS) | `CADDY_DOMAIN=laundryflow.com`, `HTTP_PORT=80`, `HTTPS_PORT=443` | Caddy minta sertifikat Let's Encrypt otomatis |
-| **Akses IP:port** (HTTP) | `CADDY_DOMAIN=:80`, `HTTP_PORT=8080` | Akses via `http://<ip>:8080` |
+**7. Deploy.** Coolify build semua image & start service.
+   - Backend entrypoint: key (bila kosong) → config cache → migrate → Apache.
+   - Queue: tunggu DB siap → config cache → `queue:work`.
+   - `APP_ENV=production` → **seeder dilewati** (tabel kosong). Buat user pertama via... *catatan: karena login butuh user, untuk produksi buat user admin manual via `php artisan tinker`*.
 
-   > Di Coolify, set Domain di service, lalu pastikan port `HTTP_PORT` ter-expose.
-
-**6. Deploy.** Coolify akan build semua image & start service.
-   Entry point backend otomatis: generate key (bila kosong) → migrate → seed → start Apache.
-   Queue worker menunggu DB siap lalu menjalankan `php artisan queue:work`.
+> ⚠️ **PENTING:** Karena `APP_ENV=production` melewati seeder, **tidak ada akun demo**.
+> Buat user admin pertama setelah deploy pertama:
+> ```bash
+> docker compose exec backend php artisan tinker
+> # >>> \App\Models\User::create(['nama'=>'Admin','email'=>'admin@x.com','password'=>bcrypt('pass'),'role'=>'pemilik']);
+> ```
 
 ### Deploy manual (tanpa Coolify)
 ```bash
 cp .env.docker.example .env
-# Edit .env: isi APP_KEY, password DB, domain
+# Edit .env: isi APP_KEY, APP_URL, CORS, NEXT_PUBLIC_API_URL, password DB
 docker compose up -d --build
-# Cek log:  docker compose logs -f
+docker compose logs -f
 ```
-Akses via domain atau `http://localhost:8080` (mode lokal).
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:8081` (default `NEXT_PUBLIC_API_URL=http://localhost:8081/api` sudah cocok).
 
 ### Catatan operasional
 - **Database persisten** via volume `db_data` → data aman saat restart/redeploy.
-- **Migration otomatis** berjalan tiap start backend (`migrate --seed`).
-  Untuk produksi dengan data sensitif, hapus `--seed` dari `backend/docker-entrypoint.sh`.
-- **WhatsApp Gateway** masih dummy (log). Untuk produksi, implement provider nyata
-  lalu rebuild image backend — tidak perlu ubah compose.
-- **Caddy data** (`caddy_data`, `caddy_config`) menyimpan sertifikat TLS → jangan dihapus.
+- **Migration otomatis** tiap start backend (`migrate --force`). Seeder **hanya saat `APP_ENV != production`**.
+- **APP_KEY wajib persisten** — set eksplisit di env, jangan andalkan auto-generate (invalidate session tiap redeploy).
+- **APP_URL** harus URL publik backend (HTTPS) — dipakai untuk storage URL & link WhatsApp.
+- **WhatsApp Gateway** masih dummy (log). Implement provider nyata lalu rebuild image backend — compose tak berubah.
+- **Ganti domain API** → frontend **wajib rebuild** (`NEXT_PUBLIC_*` build-time). Di Coolify: ubah env + trigger redeploy dengan build ulang image.
 
 ---
 

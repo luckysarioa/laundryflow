@@ -1,20 +1,24 @@
 # ==========================================================
 # LaundryFlow — Docker Compose (untuk Coolify / self-host)
 #
+# Arsitektur: COOLIFY PROXY (Traefik) terminate TLS, routing 2 domain:
+#   - app.domain.com  → frontend:3000 (Next.js)
+#   - api.domain.com  → backend:80   (Laravel API)
+#
 # Service yang berjalan:
 #   1. db        — MySQL 8 (database persisten via volume)
-#   2. backend   — Laravel API (Apache, port 80)
-#   3. queue     — Laravel queue worker (WhatsApp async) — service sama, command beda
-#   4. frontend  — Next.js PWA (port 3000)
-#   5. proxy     — Caddy reverse proxy (satu domain, auto-HTTPS)
+#   2. backend   — Laravel API (Apache, port 80) — exposable ke host
+#   3. queue     — Laravel queue worker (WhatsApp async) — image sama, command beda
+#   4. frontend  — Next.js PWA (port 3000) — exposable ke host
+#   5. backup    — cron mysqldump (backup DB otomatis)
 #
-# Cukup:  cp .env.docker.example .env  →  edit domain  →  docker compose up -d
+# Tidak ada reverse proxy internal — Coolify yang mengatur domain & HTTPS.
 # ==========================================================
 
 # Anchor: env database dibagi antara backend & queue (DRY).
 x-backend-env: &backend-env
-  APP_ENV: production
-  APP_DEBUG: "false"
+  APP_ENV: ${APP_ENV:-production}
+  APP_DEBUG: ${APP_DEBUG:-false}
   APP_KEY: ${APP_KEY}
   APP_URL: ${APP_URL}
   APP_TIMEZONE: Asia/Jakarta
@@ -24,6 +28,11 @@ x-backend-env: &backend-env
   DB_DATABASE: ${DB_DATABASE}
   DB_USERNAME: ${DB_USERNAME}
   DB_PASSWORD: ${DB_PASSWORD}
+  # CORS: origin frontend yang diizinkan (untuk arsitektur 2-domain).
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+  SANCTUM_STATEFUL_DOMAINS: ${SANCTUM_STATEFUL_DOMAINS:-}
+  SESSION_DOMAIN: ${SESSION_DOMAIN:-}
+  SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-false}
   QUEUE_CONNECTION: database
   CACHE_STORE: database
   SESSION_DRIVER: database
@@ -41,35 +50,44 @@ services:
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      # MYSQL_PWD (dari env MYSQL_ROOT_PASSWORD) dipakai otomatis mysqladmin
+      # → password tidak muncul di process list.
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root --silent"]
       interval: 10s
       timeout: 5s
       retries: 10
-    # Tidak expose port ke host secara default (aman). Hapus komentar baris bawah
-    # bila perlu akses DB dari luar (mis. untuk debugging).
-    # ports:
-    #   - "3306:3306"
+    networks:
+      - laundryflow
 
   # ---------- Backend API (Laravel) ----------
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: laundryflow-backend:latest
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
       <<: *backend-env
+    ports:
+      # Coolify map domain (mis. api.domain.com) ke port host ini → 80 di container.
+      - "${BACKEND_PORT:-8081}:80"
+    healthcheck:
+      # Route /up adalah health endpoint bawaan Laravel.
+      test: ["CMD-SHELL", "curl -fsS http://localhost/up || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - laundryflow
 
   # ---------- Queue Worker (job WhatsApp async) ----------
-  # Container terpisah dengan image yang sama, hanya command berbeda.
+  # Container terpisah, REUSE image backend (tidak rebuild duplikat).
   queue:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: laundryflow-backend:latest
     restart: unless-stopped
     depends_on:
       backend:
@@ -78,13 +96,16 @@ services:
         condition: service_healthy
     environment:
       <<: *backend-env
-    # Override entrypoint agar langsung jalankan queue worker (bukan Apache).
+    # Override entrypoint: tunggu DB siap, cache config (konsisten dgn backend), lalu queue:work.
     entrypoint: ["sh", "-c"]
     command:
       - |
         until php artisan migrate --force; do
           echo "[queue] Menunggu database siap..."; sleep 3;
         done
+        echo "[queue] Cache config & route (konsisten dgn backend)..."
+        php artisan config:cache
+        php artisan route:cache
         echo "[queue] Memulai queue worker..."
         php artisan queue:work --tries=3 --backoff=30
     networks:
@@ -96,38 +117,22 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        # Build-time: arahkan frontend ke API via reverse proxy (path relatif "/api").
-        NEXT_PUBLIC_USE_MOCK: "false"
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        # Build-time: arahkan frontend ke API.
+        # Untuk 2-domain: NEXT_PUBLIC_API_URL=https://api.domainanda.com/api
+        # Default "/api" hanya cocok bila pakai proxy internal (fallback).
+        NEXT_PUBLIC_USE_MOCK: ${NEXT_PUBLIC_USE_MOCK:-false}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
     restart: unless-stopped
     depends_on:
       - backend
-    networks:
-      - laundryflow
-
-  # ---------- Reverse Proxy (Caddy) ----------
-  proxy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    depends_on:
-      - frontend
-      - backend
-    environment:
-      # DOMAIN default ":80" untuk akses HTTP lokal (tanpa HTTPS).
-      # Untuk domain publik, set DOMAIN=laundryflow.com di .env → auto HTTPS.
-      DOMAIN: ${CADDY_DOMAIN:-:80}
-    volumes:
-      - ./proxy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
     ports:
-      - "${HTTP_PORT:-80}:80"
-      - "${HTTPS_PORT:-443}:443"
+      # Coolify map domain (mis. app.domain.com) ke port host ini.
+      - "${FRONTEND_PORT:-3000}:3000"
     networks:
       - laundryflow
 
   # ---------- Backup Service (cron mysqldump) ----------
-  # Menjalankan backup DB otomatis sesuai BACKUP_SCHEDULE (default tiap hari 01:00).
+  # Backup DB otomatis sesuai BACKUP_SCHEDULE (default tiap hari 01:00).
   # Backup tersimpan di volume 'backup_data' (persistent, aman saat redeploy).
   backup:
     build:
@@ -155,8 +160,6 @@ services:
 
 volumes:
   db_data:
-  caddy_data:
-  caddy_config:
   backup_data:
 
 networks:
