@@ -1,0 +1,25 @@
+# LaundryFlow monorepo
+
+# dependencies
+node_modules/
+
+# next.js
+.next/
+/out/
+
+# env files
+.env
+.env.local
+.env*.local
+.env.docker
+
+# Docker volumes (local)
+docker-data/
+
+# misc
+.DS_Store
+*.log
+
+# editor
+.vscode/
+.idea/

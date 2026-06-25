@@ -1,0 +1,26 @@
+# Vendor (di-install ulang di dalam container via composer)
+vendor
+
+# Git & log
+.git
+.gitignore
+*.log
+storage/logs/*.log
+
+# Environment lokal (Coolify meng-inject via env service)
+.env
+.env.local
+.env*.local
+.env.backup
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store
+
+# Hasil build lokal
+.phpunit.result.cache
+
+# Dockerfile (tidak dibutuhkan di runtime, tapi entrypoint HARUS disertakan)
+Dockerfile
+.dockerignore

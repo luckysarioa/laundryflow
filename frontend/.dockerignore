@@ -1,0 +1,27 @@
+# Dependency
+node_modules
+/.pnp
+.pnp.*
+
+# Next.js build output (akan dibangun ulang di dalam container)
+.next/
+/out/
+
+# Environment lokal (di-inject via build args / env container, bukan di-bake)
+.env
+.env.local
+.env*.local
+
+# Git & log
+.git
+.gitignore
+*.log
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store
+
+# Dockerfile sendiri tidak perlu dalam konteks build
+Dockerfile
+.dockerignore

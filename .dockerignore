@@ -1,0 +1,32 @@
+# Docker build context diakses dari root monorepo.
+# Exclude hal yang tidak perlu agar build cepat & image bersih.
+
+# Dependencies (di-install ulang di dalam container)
+frontend/node_modules
+backend/vendor
+
+# Build output lokal
+frontend/.next
+frontend/out
+
+# Environment lokal (di-inject via env service, bukan di-bake ke image)
+.env
+.env.local
+.env*.local
+.env.docker
+
+# Git & log
+.git
+.gitignore
+*.log
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store
+
+# Dokumentasi & script dev (tidak dibutuhkan di runtime image)
+*.md
+!frontend/public/**
+start-*.bat
+start-*.sh

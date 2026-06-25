@@ -1,0 +1,164 @@
+# ==========================================================
+# LaundryFlow — Docker Compose (untuk Coolify / self-host)
+#
+# Service yang berjalan:
+#   1. db        — MySQL 8 (database persisten via volume)
+#   2. backend   — Laravel API (Apache, port 80)
+#   3. queue     — Laravel queue worker (WhatsApp async) — service sama, command beda
+#   4. frontend  — Next.js PWA (port 3000)
+#   5. proxy     — Caddy reverse proxy (satu domain, auto-HTTPS)
+#
+# Cukup:  cp .env.docker.example .env  →  edit domain  →  docker compose up -d
+# ==========================================================
+
+# Anchor: env database dibagi antara backend & queue (DRY).
+x-backend-env: &backend-env
+  APP_ENV: production
+  APP_DEBUG: "false"
+  APP_KEY: ${APP_KEY}
+  APP_URL: ${APP_URL}
+  APP_TIMEZONE: Asia/Jakarta
+  DB_CONNECTION: mysql
+  DB_HOST: db
+  DB_PORT: 3306
+  DB_DATABASE: ${DB_DATABASE}
+  DB_USERNAME: ${DB_USERNAME}
+  DB_PASSWORD: ${DB_PASSWORD}
+  QUEUE_CONNECTION: database
+  CACHE_STORE: database
+  SESSION_DRIVER: database
+
+services:
+  # ---------- Database ----------
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Tidak expose port ke host secara default (aman). Hapus komentar baris bawah
+    # bila perlu akses DB dari luar (mis. untuk debugging).
+    # ports:
+    #   - "3306:3306"
+
+  # ---------- Backend API (Laravel) ----------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *backend-env
+    networks:
+      - laundryflow
+
+  # ---------- Queue Worker (job WhatsApp async) ----------
+  # Container terpisah dengan image yang sama, hanya command berbeda.
+  queue:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+      db:
+        condition: service_healthy
+    environment:
+      <<: *backend-env
+    # Override entrypoint agar langsung jalankan queue worker (bukan Apache).
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        until php artisan migrate --force; do
+          echo "[queue] Menunggu database siap..."; sleep 3;
+        done
+        echo "[queue] Memulai queue worker..."
+        php artisan queue:work --tries=3 --backoff=30
+    networks:
+      - laundryflow
+
+  # ---------- Frontend (Next.js PWA) ----------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Build-time: arahkan frontend ke API via reverse proxy (path relatif "/api").
+        NEXT_PUBLIC_USE_MOCK: "false"
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - laundryflow
+
+  # ---------- Reverse Proxy (Caddy) ----------
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    environment:
+      # DOMAIN default ":80" untuk akses HTTP lokal (tanpa HTTPS).
+      # Untuk domain publik, set DOMAIN=laundryflow.com di .env → auto HTTPS.
+      DOMAIN: ${CADDY_DOMAIN:-:80}
+    volumes:
+      - ./proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    networks:
+      - laundryflow
+
+  # ---------- Backup Service (cron mysqldump) ----------
+  # Menjalankan backup DB otomatis sesuai BACKUP_SCHEDULE (default tiap hari 01:00).
+  # Backup tersimpan di volume 'backup_data' (persistent, aman saat redeploy).
+  backup:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      BACKUP_DIR: /backups
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-0 1 * * *}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_COMPRESS: ${BACKUP_COMPRESS:-gzip}
+      BACKUP_ON_START: ${BACKUP_ON_START:-true}
+    volumes:
+      - backup_data:/backups
+    networks:
+      - laundryflow
+
+volumes:
+  db_data:
+  caddy_data:
+  caddy_config:
+  backup_data:
+
+networks:
+  laundryflow:
+    driver: bridge
