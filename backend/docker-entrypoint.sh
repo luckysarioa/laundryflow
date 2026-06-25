@@ -31,6 +31,10 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
+# 3b) Buat symlink public/storage → storage/app/public (idempoten di Laravel 11).
+#      Tanpa ini, file yang di-upload (foto order) akan 404 saat diakses via /storage/*.
+php artisan storage:link
+
 # 4) Migration. Seeding HANYA saat APP_ENV != production (data demo).
 #    Produksi: tabel kosong, isi via UI. Mencegah duplikat data saat redeploy.
 echo "[LaundryFlow] Menjalankan migration..."

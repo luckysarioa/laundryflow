@@ -71,3 +71,25 @@ export function toWaNumber(no_hp: string): string {
   if (cleaned.startsWith("8")) cleaned = "62" + cleaned;
   return cleaned;
 }
+
+/**
+ * Bangun URL absolut untuk file di storage publik backend.
+ *
+ * `path` = jalur relatif dari backend (mis. "orders/5/abc.jpg"),
+ * `apiUrl` = NEXT_PUBLIC_API_URL yang berakhiran /api (mis. "https://api.domain.com/api").
+ *
+ * Origin di-strip dari suffix /api agar URL benar:
+ *   "https://api.domain.com/api" + "orders/5/x.jpg"
+ *   → "https://api.domain.com/storage/orders/5/x.jpg"
+ *
+ * Bila apiUrl relatif (mode proxy internal "/api") → "/storage/orders/5/x.jpg".
+ */
+export function storageUrl(path: string, apiUrl?: string): string {
+  if (!path) return "";
+  // Bila path sudah absolut (http/...), pakai apa adanya.
+  if (/^https?:\/\//i.test(path)) return path;
+
+  const base = (apiUrl ?? "").replace(/\/api\/?$/, "").replace(/\/$/, "");
+  const cleanPath = path.replace(/^\/+/, "");
+  return `${base}/storage/${cleanPath}`;
+}

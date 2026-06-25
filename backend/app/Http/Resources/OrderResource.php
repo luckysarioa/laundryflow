@@ -22,7 +22,10 @@ class OrderResource extends JsonResource
             'total_harga' => (int) $this->total_harga,
             'status' => $this->status,
             'catatan' => $this->catatan,
-            'foto' => $this->foto ? asset('storage/' . $this->foto) : null,
+            // foto: jalur RELATIF terhadap storage publik (mis. "orders/5/abc.jpg").
+            // Frontend mengkonstruksi URL absolut: {backend_origin}/storage/{foto}.
+            // (Sebelumnya pakai asset() yang rapuh: bergantung APP_URL persis benar.)
+            'foto' => $this->foto,
             'tgl_masuk' => $this->tgl_masuk?->toIso8601String(),
             'tgl_selesai' => $this->tgl_selesai?->toIso8601String(),
 

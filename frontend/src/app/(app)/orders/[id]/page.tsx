@@ -13,7 +13,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
-import { formatRupiah, formatTanggal, formatJam } from "@/lib/format";
+import { formatRupiah, formatTanggal, formatJam, storageUrl } from "@/lib/format";
 import { STATUS_FLOW, STATUS_LABEL, STATUS_STYLE, nextStatus } from "@/lib/constants";
 
 // ==========================================================
@@ -313,7 +313,7 @@ export default function OrderDetailPage() {
             <div className="space-y-3">
               <div className="relative rounded-xl overflow-hidden bg-slate-100">
                 <img
-                  src={order.foto.startsWith("http") ? order.foto : `${process.env.NEXT_PUBLIC_API_URL ?? ""}/storage/${order.foto}`}
+                  src={storageUrl(order.foto ?? "", process.env.NEXT_PUBLIC_API_URL)}
                   alt="Bukti cucian"
                   className="w-full h-auto max-h-64 object-contain"
                 />
