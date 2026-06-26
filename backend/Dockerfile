@@ -34,8 +34,10 @@ RUN composer config --no-interaction policy.advisories.block false \
 # --- Copy kode aplikasi ---
 COPY . .
 
-# Izinkan Apache menulis ke storage & bootstrap/cache.
-RUN chown -R www-data:www-data /var/www/html \
+# Buat struktur storage (git-ignored) & izinkan Apache menulis.
+RUN mkdir -p storage/app/public storage/framework/{cache/data,sessions,testing,views} storage/logs \
+    bootstrap/cache \
+    && chown -R www-data:www-data /var/www/html \
     && chmod -R 775 storage bootstrap/cache
 
 # DocumentRoot Laravel: public/
