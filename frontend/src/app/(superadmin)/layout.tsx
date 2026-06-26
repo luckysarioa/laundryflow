@@ -17,7 +17,7 @@ const NAV_ITEMS = [
   { href: "/superadmin/tenants", label: "Tenants", icon: TenantIcon },
   { href: "/superadmin/subscriptions", label: "Subscriptions", icon: SubscriptionIcon },
   { href: "/superadmin/revenue", label: "Revenue", icon: RevenueIcon },
-  { href: "/superadmin/settings", label: "Settings", icon: SettingsIcon },
+  { href: "/superadmin/system-settings", label: "Settings", icon: SettingsIcon },
 ];
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {

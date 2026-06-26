@@ -31,7 +31,7 @@ const MOCK_SETTINGS: SystemSettings = {
   max_free_orders: 100,
 };
 
-export default function SettingsPage() {
+export default function SystemSettingsPage() {
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -45,7 +45,6 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
     setSaving(false);
     alert("Settings saved!");
@@ -75,7 +74,6 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      {/* Platform Settings */}
       <Card padding="md">
         <h3 className="text-sm font-semibold text-slate-800 mb-4">Platform</h3>
         <div className="space-y-4">
@@ -109,7 +107,6 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      {/* Access Settings */}
       <Card padding="md">
         <h3 className="text-sm font-semibold text-slate-800 mb-4">Access Control</h3>
         <div className="space-y-4">
@@ -152,7 +149,6 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      {/* Free Plan Limits */}
       <Card padding="md">
         <h3 className="text-sm font-semibold text-slate-800 mb-4">Free Plan Limits</h3>
         <div className="space-y-4">
