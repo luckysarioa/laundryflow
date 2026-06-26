@@ -6,6 +6,9 @@ return [
     'env' => env('APP_ENV', 'production'),
     'debug' => (bool) env('APP_DEBUG', false),
     'url' => env('APP_URL', 'http://localhost'),
+    // URL frontend (terpisah dari backend pada arsitektur 2-domain Coolify).
+    // Dipakai untuk link yang diklik pelanggan (mis. tracking status di WhatsApp).
+    'frontend_url' => env('FRONTEND_URL', env('APP_URL', 'http://localhost')),
     'timezone' => env('APP_TIMEZONE', 'Asia/Jakarta'),
     'locale' => 'id',
     'fallback_locale' => 'en',

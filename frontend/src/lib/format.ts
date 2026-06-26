@@ -86,8 +86,9 @@ export function toWaNumber(no_hp: string): string {
  */
 export function storageUrl(path: string, apiUrl?: string): string {
   if (!path) return "";
-  // Bila path sudah absolut (http/...), pakai apa adanya.
-  if (/^https?:\/\//i.test(path)) return path;
+  // Bila path sudah absolut (http/...), atau blob:/data: (preview upload lokal),
+  // pakai apa adanya — jangan di-prefix /storage.
+  if (/^(https?:|blob:|data:)/i.test(path)) return path;
 
   const base = (apiUrl ?? "").replace(/\/api\/?$/, "").replace(/\/$/, "");
   const cleanPath = path.replace(/^\/+/, "");

@@ -189,6 +189,37 @@ docker compose logs -f
 - **WhatsApp Gateway** masih dummy (log). Implement provider nyata lalu rebuild image backend — compose tak berubah.
 - **Ganti domain API** → frontend **wajib rebuild** (`NEXT_PUBLIC_*` build-time). Di Coolify: ubah env + trigger redeploy dengan build ulang image.
 
+### ✅ Checklist sebelum deploy (wajib)
+
+> Hasil pre-deploy audit. Tandai semua sebelum tekan tombol Deploy di Coolify.
+
+**Environment (set di Coolify → Environment Variables):**
+- [ ] `APP_KEY=base64:...` — generate dengan `docker run --rm php:8.2-cli php -r "echo 'base64:'.base64_encode(random_bytes(32));"` (jangan biarkan kosong, akan invalidate session tiap redeploy)
+- [ ] `APP_URL=https://api.domainanda.com` — **bare origin, TANPA `/api`**
+- [ ] `APP_ENV=production`
+- [ ] `DB_PASSWORD` & `DB_ROOT_PASSWORD` — password kuat (ganti default `changeme`)
+- [ ] `CORS_ALLOWED_ORIGINS=https://app.domainanda.com` — origin frontend (WAJIB, default localhost akan diblokir CORS)
+- [ ] `FRONTEND_URL=https://app.domainanda.com` — untuk link tracking di WhatsApp
+- [ ] `NEXT_PUBLIC_USE_MOCK=false` & `NEXT_PUBLIC_API_URL=https://api.domainanda.com/api` — **HARUS sebagai build-args**, bukan runtime env (Next.js inline saat build)
+
+**Opsional (fitur langganan berbayar):**
+- [ ] `MIDTRANS_CLIENT_KEY` / `MIDTRANS_SERVER_KEY` / `MIDTRANS_NOTIFICATION_SECRET` — bila pakai payment. Kosongkan bila belum.
+
+**Coolify UI:**
+- [ ] Service `frontend` → Domain `app.domainanda.com` → port `3000`
+- [ ] Service `backend` → Domain `api.domainanda.com` → port `8081`
+- [ ] Coolify auto-issue HTTPS (Let's Encrypt) untuk keduanya
+
+**Setelah deploy pertama (production = tanpa seeder):**
+- [ ] Buat user admin: `docker compose exec backend php artisan tinker` lalu
+      `\App\Models\User::create(['nama'=>'Admin','email'=>'admin@x.com','password'=>bcrypt('pass'),'role'=>'pemilik']);`
+- [ ] Buat service & outlet awal via UI
+
+**Volume persistent (sudah dikonfigurasi, jangan dihapus):**
+- `db_data` — database MySQL
+- `backend_storage` — foto order & file upload (hilang bila volume dibersihkan!)
+- `backup_data` — hasil backup otomatis
+
 ---
 
 ## 💾 Backup & Restore Database

@@ -33,6 +33,15 @@ x-backend-env: &backend-env
   SANCTUM_STATEFUL_DOMAINS: ${SANCTUM_STATEFUL_DOMAINS:-}
   SESSION_DOMAIN: ${SESSION_DOMAIN:-}
   SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-false}
+  # URL frontend (untuk link tracking di pesan WhatsApp).
+  FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+  # Midtrans (opsional — fitur langganan berbayar).
+  MIDTRANS_CLIENT_KEY: ${MIDTRANS_CLIENT_KEY:-}
+  MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY:-}
+  MIDTRANS_IS_PRODUCTION: ${MIDTRANS_IS_PRODUCTION:-false}
+  MIDTRANS_SNAP_URL: ${MIDTRANS_SNAP_URL:-https://app.sandbox.midtrans.com/snap/sheet.js}
+  MIDTRANS_API_URL: ${MIDTRANS_API_URL:-https://api.sandbox.midtrans.com}
+  MIDTRANS_NOTIFICATION_SECRET: ${MIDTRANS_NOTIFICATION_SECRET:-}
   QUEUE_CONNECTION: database
   CACHE_STORE: database
   SESSION_DRIVER: database
@@ -50,9 +59,10 @@ services:
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
-      # MYSQL_PWD (dari env MYSQL_ROOT_PASSWORD) dipakai otomatis mysqladmin
-      # → password tidak muncul di process list.
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root --silent"]
+      # mysqladmin baca password dari env MYSQL_PWD (native MySQL client behavior)
+      # → password tidak muncul di process list. mysql:8.0 root pakai caching_sha2
+      # yang butuh password; tanpa ini healthcheck bisa fail → backend/backup tak start.
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_ROOT_PASSWORD mysqladmin ping -h localhost -u root --silent"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -71,6 +81,9 @@ services:
         condition: service_healthy
     environment:
       <<: *backend-env
+    volumes:
+      # Persistent storage: foto order & file upload TIDAK hilang saat redeploy.
+      backend_storage:/var/www/html/storage/app/public
     ports:
       # Coolify map domain (mis. api.domain.com) ke port host ini → 80 di container.
       - "${BACKEND_PORT:-8081}:80"
@@ -160,6 +173,7 @@ services:
 
 volumes:
   db_data:
+  backend_storage:
   backup_data:
 
 networks:

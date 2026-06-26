@@ -100,11 +100,13 @@ class WhatsAppMessage
 
     /**
      * Generate tracking URL untuk order.
+     * Pakai frontend_url (config app) — BUKAN app.url — karena pelanggan
+     * harus ke halaman frontend, bukan endpoint API backend.
      */
     public static function getTrackingUrl(int $orderId): string
     {
-        $baseUrl = config('app.url', 'http://localhost:3000');
-        return "{$baseUrl}/tracking/{$orderId}";
+        $baseUrl = config('app.frontend_url', config('app.url', 'http://localhost:3000'));
+        return rtrim($baseUrl, '/') . "/tracking/{$orderId}";
     }
 
     /** Normalisasi nomor HP ke format 62xxx. */
