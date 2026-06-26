@@ -25,7 +25,13 @@ dan Queue System untuk pengiriman WhatsApp async.
 
 ```bash
 cd backend
-composer install                 # instal dependency
+
+# Generate composer.lock (BELUM di-commit — reproducibility build).
+# Jalankan SEKALI di mesin yang punya PHP 8.2 + Composer, lalu commit hasilnya.
+# Tanpa ini, build Docker mengambil versi dep terbaru (non-reproducible).
+composer install                 # akan membuat composer.lock dari composer.json
+# git add composer.lock && git commit -m "chore: commit composer.lock"
+
 cp .env.example .env             # salin konfigurasi
 php artisan key:generate         # generate APP_KEY
 

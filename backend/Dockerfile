@@ -20,9 +20,13 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 # --- Install dependency (layer terpisah untuk caching) ---
+# CATATAN: composer.lock belum di-commit (generate di mesin lokal lalu commit).
+# Tanpa lockfile, build mengambil versi terbaru → non-reproducible.
+# Lihat backend/README.md bagian Setup cara generate composer.lock.
 COPY composer.json composer.lock* ./
 # --no-dev untuk image production (tanpa dependency testing/dev).
 # --no-scripts: scripts dijalankan di entrypoint setelah env siap.
+# || fallback: bila lockfile mengunci versi yang incompatible, coba tanpa --no-dev constraint.
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts || composer install --optimize-autoloader --no-interaction --no-scripts
 
 # --- Copy kode aplikasi ---
