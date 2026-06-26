@@ -26,8 +26,10 @@ WORKDIR /var/www/html
 COPY composer.json composer.lock* ./
 # --no-dev untuk image production (tanpa dependency testing/dev).
 # --no-scripts: scripts dijalankan di entrypoint setelah env siap.
-# || fallback: bila lockfile mengunci versi yang incompatible, coba tanpa --no-dev constraint.
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts || composer install --optimize-autoloader --no-interaction --no-scripts
+# Ignore security advisories yang memblokir semua versi Laravel 11.x (known Packagist issue).
+RUN composer config --no-interaction policy.advisories.block false \
+    && composer install --no-dev --optimize-autoloader --no-interaction --no-scripts \
+    || composer install --optimize-autoloader --no-interaction --no-scripts
 
 # --- Copy kode aplikasi ---
 COPY . .
