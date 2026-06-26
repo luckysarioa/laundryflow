@@ -31,7 +31,7 @@ const MOCK_SETTINGS: SystemSettings = {
   max_free_orders: 100,
 };
 
-export default function SystemSettingsPage() {
+export default function SaSettingsPage() {
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
