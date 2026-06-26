@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
-import type { Customer } from "@/lib/types";
+import type { Customer, CustomerInput, CustomerUpdate } from "@/lib/types";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -14,8 +14,7 @@ import { useToast } from "@/components/ui/Toast";
 import { toWaNumber } from "@/lib/format";
 
 // ==========================================================
-// Daftar Pelanggan + tambah pelanggan baru (modal).
-// Sesuai PRD poin 4 (CRUD Customer).
+// Daftar Pelanggan + tambah/edit/hapus pelanggan.
 // ==========================================================
 
 export default function CustomersPage() {
@@ -23,6 +22,7 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[] | null>(null);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Customer | null>(null);
 
   const load = useCallback(async () => {
     const data = await api.getCustomers();
@@ -41,10 +41,34 @@ export default function CustomersPage() {
     );
   }, [customers, q]);
 
-  async function handleCreated(c: Customer) {
+  function handleCreated(c: Customer) {
     setCustomers((prev) => (prev ? [c, ...prev] : [c]));
     setOpen(false);
+    setEditing(null);
     toast.success(`Pelanggan "${c.nama}" ditambahkan.`);
+  }
+
+  function handleUpdated(c: Customer) {
+    setCustomers((prev) => prev ? prev.map((x) => (x.id === c.id ? c : x)) : [c]);
+    setOpen(false);
+    setEditing(null);
+    toast.success(`Pelanggan "${c.nama}" diperbarui.`);
+  }
+
+  function handleEdit(c: Customer) {
+    setEditing(c);
+    setOpen(true);
+  }
+
+  async function handleDelete(c: Customer) {
+    if (!confirm(`Hapus pelanggan "${c.nama}"?`)) return;
+    try {
+      await api.deleteCustomer(c.id);
+      setCustomers((prev) => prev ? prev.filter((x) => x.id !== c.id) : null);
+      toast.success(`Pelanggan "${c.nama}" dihapus.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus pelanggan.");
+    }
   }
 
   return (
@@ -54,7 +78,7 @@ export default function CustomersPage() {
         subtitle={`${customers?.length ?? 0} terdaftar`}
         action={
           <button
-            onClick={() => setOpen(true)}
+            onClick={() => { setEditing(null); setOpen(true); }}
             className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-brand-600 text-white hover:bg-brand-700"
             aria-label="Tambah Pelanggan"
           >
@@ -74,7 +98,7 @@ export default function CustomersPage() {
           <EmptyState
             title="Tidak ada pelanggan"
             description={q ? "Tidak ada hasil pencarian." : "Tambahkan pelanggan pertama Anda."}
-            action={!q && <Button size="sm" onClick={() => setOpen(true)}>+ Tambah Pelanggan</Button>}
+            action={!q && <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}>+ Tambah Pelanggan</Button>}
           />
         ) : (
           <div className="space-y-2">
@@ -87,36 +111,67 @@ export default function CustomersPage() {
                   <p className="text-sm font-medium text-slate-800 truncate">{c.nama}</p>
                   <p className="text-[11px] text-slate-400 truncate">{c.no_hp}</p>
                 </div>
-                <a
-                  href={`https://wa.me/${toWaNumber(c.no_hp)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-emerald-600 hover:bg-emerald-50"
-                  aria-label={`Chat WhatsApp ${c.nama}`}
-                >
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.51 5.26l-.999 3.648 3.748-.999z" />
-                  </svg>
-                </a>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleEdit(c)}
+                    className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+                    aria-label="Edit"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path strokeLinecap="round" d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => handleDelete(c)}
+                    className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-red-500 hover:bg-red-50"
+                    aria-label="Hapus"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                  </button>
+                  <a
+                    href={`https://wa.me/${toWaNumber(c.no_hp)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-emerald-600 hover:bg-emerald-50"
+                    aria-label={`Chat WhatsApp ${c.nama}`}
+                  >
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.51 5.26l-.999 3.648 3.748-.999z" />
+                    </svg>
+                  </a>
+                </div>
               </Card>
             ))}
           </div>
         )}
       </div>
 
-      <AddCustomerModal open={open} onClose={() => setOpen(false)} onCreated={handleCreated} />
+      <CustomerModal
+        open={open}
+        onClose={() => { setOpen(false); setEditing(null); }}
+        onCreated={handleCreated}
+        onUpdated={handleUpdated}
+        editing={editing}
+      />
     </>
   );
 }
 
-function AddCustomerModal({
+function CustomerModal({
   open,
   onClose,
   onCreated,
+  onUpdated,
+  editing,
 }: {
   open: boolean;
   onClose: () => void;
   onCreated: (c: Customer) => void;
+  onUpdated: (c: Customer) => void;
+  editing: Customer | null;
 }) {
   const [nama, setNama] = useState("");
   const [no_hp, setNoHp] = useState("");
@@ -131,6 +186,15 @@ function AddCustomerModal({
     setError("");
   }
 
+  // Initialize form when editing
+  useState(() => {
+    if (editing) {
+      setNama(editing.nama);
+      setNoHp(editing.no_hp);
+      setAlamat(editing.alamat ?? "");
+    }
+  });
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
@@ -138,15 +202,24 @@ function AddCustomerModal({
     if (!no_hp.trim()) return setError("No. HP wajib diisi.");
     setLoading(true);
     try {
-      const created = await api.createCustomer({
-        nama: nama.trim(),
-        no_hp: no_hp.trim(),
-        alamat: alamat.trim(),
-      });
-      onCreated(created);
+      if (editing) {
+        const updated = await api.updateCustomer(editing.id, {
+          nama: nama.trim(),
+          no_hp: no_hp.trim(),
+          alamat: alamat.trim(),
+        });
+        onUpdated(updated);
+      } else {
+        const created = await api.createCustomer({
+          nama: nama.trim(),
+          no_hp: no_hp.trim(),
+          alamat: alamat.trim(),
+        });
+        onCreated(created);
+      }
       reset();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal menambah pelanggan.");
+      setError(err instanceof Error ? err.message : "Gagal menyimpan pelanggan.");
     } finally {
       setLoading(false);
     }
@@ -159,7 +232,7 @@ function AddCustomerModal({
         reset();
         onClose();
       }}
-      title="Tambah Pelanggan"
+      title={editing ? "Edit Pelanggan" : "Tambah Pelanggan"}
       footer={
         <>
           <Button variant="outline" fullWidth onClick={() => {

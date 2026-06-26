@@ -3,7 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import type { Customer, Service } from "@/lib/types";
+import type { Customer, Service, TipePembayaran } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -33,6 +33,7 @@ export function OrderForm({ services, customers }: OrderFormProps) {
   const [serviceId, setServiceId] = useState<number>(services[0]?.id ?? 0);
   const [berat, setBerat] = useState<string>("");
   const [catatan, setCatatan] = useState("");
+  const [tipePembayaran, setTipePembayaran] = useState<TipePembayaran | "">("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -57,6 +58,7 @@ export function OrderForm({ services, customers }: OrderFormProps) {
         serviceId,
         total_berat: beratNum,
         catatan: catatan.trim() || undefined,
+        tipe_pembayaran: tipePembayaran || undefined,
       });
       toast.success(`Order #${order.id} dibuat!`);
       router.replace(`/orders/${order.id}`);
@@ -120,6 +122,17 @@ export function OrderForm({ services, customers }: OrderFormProps) {
             value={catatan}
             onChange={(e) => setCatatan(e.target.value)}
           />
+
+          <Select
+            label="Metode Pembayaran (opsional)"
+            value={tipePembayaran}
+            onChange={(e) => setTipePembayaran(e.target.value as TipePembayaran | "")}
+          >
+            <option value="">Belum ditentukan</option>
+            <option value="tunai">Tunai</option>
+            <option value="qris">QRIS</option>
+            <option value="transfer">Transfer</option>
+          </Select>
         </div>
       </Card>
 

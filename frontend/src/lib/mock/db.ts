@@ -25,10 +25,10 @@ export const DEMO_PASSWORD = "laundry123";
 
 // ----- Services -----
 export const services: Service[] = [
-  { id: 1, nama_layanan: "Cuci Kering", harga_per_kilo: 7000 },
-  { id: 2, nama_layanan: "Cuci Setrika", harga_per_kilo: 9000 },
-  { id: 3, nama_layanan: "Setrika Saja", harga_per_kilo: 5000 },
-  { id: 4, nama_layanan: "Express 6 Jam", harga_per_kilo: 15000 },
+  { id: 1, nama_layanan: "Cuci Kering", harga_per_kilo: 7000, is_active: true },
+  { id: 2, nama_layanan: "Cuci Setrika", harga_per_kilo: 9000, is_active: true },
+  { id: 3, nama_layanan: "Setrika Saja", harga_per_kilo: 5000, is_active: true },
+  { id: 4, nama_layanan: "Express 6 Jam", harga_per_kilo: 15000, is_active: true },
 ];
 
 // ----- Customers -----
@@ -112,6 +112,7 @@ export const transactions: Transaction[] = orders
 // ----- Auto-increment counter -----
 let nextOrderId = orders.length + 1;
 let nextCustomerId = customers.length + 1;
+let nextServiceId = services.length + 1;
 let nextTransactionId = transactions.length + 1;
 
 export function newOrderId() {
@@ -119,6 +120,9 @@ export function newOrderId() {
 }
 export function newCustomerId() {
   return nextCustomerId++;
+}
+export function newServiceId() {
+  return nextServiceId++;
 }
 export function newTransactionId() {
   return nextTransactionId++;

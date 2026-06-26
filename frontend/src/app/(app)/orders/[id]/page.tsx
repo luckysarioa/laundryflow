@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import type { Order, Service } from "@/lib/types";
+import type { Order, Service, TipePembayaran } from "@/lib/types";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -18,7 +18,7 @@ import { STATUS_FLOW, STATUS_LABEL, STATUS_STYLE, nextStatus } from "@/lib/const
 
 // ==========================================================
 // Detail Order — info lengkap, update status (advance), & WA trigger.
-// Dilengkapi: Edit order, upload foto bukti cucian.
+// Dilengkapi: Edit order, upload foto bukti cucian, hapus order, pembayaran.
 // ==========================================================
 
 export default function OrderDetailPage() {
@@ -40,6 +40,7 @@ export default function OrderDetailPage() {
     serviceId: 0,
     total_berat: "",
     catatan: "",
+    tipe_pembayaran: "" as TipePembayaran | "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -72,6 +73,7 @@ export default function OrderDetailPage() {
         serviceId: order.serviceId,
         total_berat: String(order.total_berat),
         catatan: order.catatan ?? "",
+        tipe_pembayaran: order.tipe_pembayaran ?? "",
       });
     }
   }, [order, editing]);
@@ -109,6 +111,7 @@ export default function OrderDetailPage() {
         serviceId: editData.serviceId,
         total_berat: beratNum,
         catatan: editData.catatan.trim() || null,
+        tipe_pembayaran: editData.tipe_pembayaran || null,
       });
       setOrder(updated);
       setEditing(false);
@@ -160,7 +163,20 @@ export default function OrderDetailPage() {
     }
   }
 
+  async function handleDeleteOrder() {
+    if (!order) return;
+    if (!confirm("Hapus order ini?")) return;
+    try {
+      await api.deleteOrder(order.id);
+      toast.success("Order berhasil dihapus.");
+      router.replace("/orders");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus order.");
+    }
+  }
+
   const canEdit = order && ["antrian", "cuci"].includes(order.status);
+  const isPaid = order?.transactions && order.transactions.length > 0;
 
   if (loading) {
     return (
@@ -195,16 +211,27 @@ export default function OrderDetailPage() {
         back
         action={
           canEdit && !editing ? (
-            <button
-              onClick={() => setEditing(true)}
-              className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-brand-600 text-white hover:bg-brand-700"
-              aria-label="Edit Order"
-            >
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                <path strokeLinecap="round" d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setEditing(true)}
+                className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-brand-600 text-white hover:bg-brand-700"
+                aria-label="Edit Order"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path strokeLinecap="round" d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
+              <button
+                onClick={handleDeleteOrder}
+                className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-red-500 text-white hover:bg-red-600"
+                aria-label="Hapus Order"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </button>
+            </div>
           ) : undefined
         }
       />
@@ -230,6 +257,29 @@ export default function OrderDetailPage() {
               <p className="text-[11px] text-slate-400 pt-1">📍 {order.customer.alamat}</p>
             )}
           </div>
+        </Card>
+
+        {/* Status Pembayaran */}
+        <Card>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-800">Status Pembayaran</h3>
+            {isPaid ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                Lunas
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                Belum Bayar
+              </span>
+            )}
+          </div>
+          {order.tipe_pembayaran && (
+            <p className="text-xs text-slate-500 mt-2">
+              Metode: {order.tipe_pembayaran === "tunai" ? "Tunai" : order.tipe_pembayaran === "qris" ? "QRIS" : "Transfer"}
+            </p>
+          )}
         </Card>
 
         {/* Edit Form */}
@@ -267,6 +317,17 @@ export default function OrderDetailPage() {
                 onChange={(e) => setEditData({ ...editData, catatan: e.target.value })}
               />
 
+              <Select
+                label="Metode Pembayaran"
+                value={editData.tipe_pembayaran}
+                onChange={(e) => setEditData({ ...editData, tipe_pembayaran: e.target.value as TipePembayaran | "" })}
+              >
+                <option value="">Belum ditentukan</option>
+                <option value="tunai">Tunai</option>
+                <option value="qris">QRIS</option>
+                <option value="transfer">Transfer</option>
+              </Select>
+
               <div className="flex gap-2 pt-2">
                 <Button
                   variant="outline"
@@ -302,6 +363,12 @@ export default function OrderDetailPage() {
                 <Row label="Selesai" value={`${formatTanggal(order.tgl_selesai)} • ${formatJam(order.tgl_selesai)}`} />
               )}
               {order.catatan && <Row label="Catatan" value={order.catatan} />}
+              {order.tipe_pembayaran && (
+                <Row label="Pembayaran" value={
+                  order.tipe_pembayaran === "tunai" ? "Tunai" :
+                  order.tipe_pembayaran === "qris" ? "QRIS" : "Transfer"
+                } />
+              )}
             </dl>
           </Card>
         )}
@@ -400,6 +467,23 @@ export default function OrderDetailPage() {
 
         {/* WhatsApp */}
         <WhatsAppButton order={order} />
+
+        {/* Receipt Download */}
+        {order.status === "diambil" && (
+          <Button variant="outline" fullWidth onClick={() => api.downloadReceipt(order.id)}>
+            <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download Struk
+          </Button>
+        )}
+
+        {/* Customer Order History */}
+        {order.customer && (
+          <Button variant="ghost" size="sm" fullWidth onClick={() => router.push(`/customers/${order.customer!.id}/orders`)}>
+            Lihat Riwayat Order Pelanggan →
+          </Button>
+        )}
       </div>
     </>
   );

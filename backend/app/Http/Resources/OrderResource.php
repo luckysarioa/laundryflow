@@ -22,6 +22,7 @@ class OrderResource extends JsonResource
             'total_harga' => (int) $this->total_harga,
             'status' => $this->status,
             'catatan' => $this->catatan,
+            'tipe_pembayaran' => $this->tipe_pembayaran,
             // foto: jalur RELATIF terhadap storage publik (mis. "orders/5/abc.jpg").
             // Frontend mengkonstruksi URL absolut: {backend_origin}/storage/{foto}.
             // (Sebelumnya pakai asset() yang rapuh: bergantung APP_URL persis benar.)
@@ -32,6 +33,9 @@ class OrderResource extends JsonResource
             // Relasi (harus di-load oleh controller via with()).
             'customer' => new CustomerResource($this->whenLoaded('customer')),
             'service' => new ServiceResource($this->whenLoaded('service')),
+
+            // Transaksi (jika ada) untuk cek status bayar
+            'transactions' => TransactionResource::collection($this->whenLoaded('transactions')),
         ];
     }
 }

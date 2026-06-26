@@ -48,7 +48,7 @@ class OrderController extends Controller
      */
     public function show(Order $order): OrderResource
     {
-        $order->load(['customer', 'service']);
+        $order->load(['customer', 'service', 'transactions']);
 
         return new OrderResource($order);
     }
@@ -57,14 +57,28 @@ class OrderController extends Controller
      * POST /orders — buat order baru.
      * total_harga dihitung otomatis: berat × harga_per_kilo.
      * Status awal = 'antrian'.
+     * Cek subscription limit.
      */
     public function store(Request $request): OrderResource
     {
+        // Cek subscription limit
+        $user = $request->user();
+        if ($user->isPemilik()) {
+            $subscription = $user->subscription;
+            if ($subscription && !$subscription->canCreateOrder()) {
+                return response()->json([
+                    'message' => 'Batas order bulanan tercapai. Upgrade plan untuk melanjutkan.',
+                    'code' => 'ORDER_LIMIT_REACHED',
+                ], 429);
+            }
+        }
+
         $data = $request->validate([
             'customerId' => ['required', 'exists:customers,id'],
             'serviceId' => ['required', 'exists:services,id'],
             'total_berat' => ['required', 'numeric', 'min:0.1'],
             'catatan' => ['nullable', 'string', 'max:500'],
+            'tipe_pembayaran' => ['nullable', 'string', 'in:tunai,qris,transfer'],
         ]);
 
         $service = Service::findOrFail($data['serviceId']);
@@ -77,8 +91,24 @@ class OrderController extends Controller
                 'total_harga' => $service->hitungHarga((float) $data['total_berat']),
                 'status' => OrderStatus::Antrian->value,
                 'catatan' => $data['catatan'] ?? null,
+                'tipe_pembayaran' => $data['tipe_pembayaran'] ?? null,
                 'tgl_masuk' => now(),
             ]);
+
+            // Log activity
+            \App\Models\ActivityLog::log('order.create', $order, [
+                'customer_id' => $order->customer_id,
+                'total_harga' => $order->total_harga,
+            ]);
+
+            // Create notification for new order
+            \App\Models\Notification::createForUser(
+                auth()->id(),
+                'Order Baru',
+                "Order #{$order->id} dari {$order->customer->nama ?? 'pelanggan'} telah dibuat.",
+                'info',
+                "/orders/{$order->id}"
+            );
 
             $order->load(['customer', 'service']);
 
@@ -87,7 +117,7 @@ class OrderController extends Controller
     }
 
     /**
-     * PATCH /orders/{order} — edit order (berat, layanan, catatan).
+     * PATCH /orders/{order} — edit order (berat, layanan, catatan, pembayaran).
      * Hanya boleh diedit jika status masih 'antrian' atau 'cuci'.
      */
     public function update(Request $request, Order $order): OrderResource
@@ -102,6 +132,7 @@ class OrderController extends Controller
             'serviceId' => ['sometimes', 'exists:services,id'],
             'total_berat' => ['sometimes', 'numeric', 'min:0.1'],
             'catatan' => ['nullable', 'string', 'max:500'],
+            'tipe_pembayaran' => ['nullable', 'string', 'in:tunai,qris,transfer'],
         ]);
 
         DB::transaction(function () use ($data, $order) {
@@ -113,6 +144,9 @@ class OrderController extends Controller
             }
             if (array_key_exists('catatan', $data)) {
                 $order->catatan = $data['catatan'];
+            }
+            if (array_key_exists('tipe_pembayaran', $data)) {
+                $order->tipe_pembayaran = $data['tipe_pembayaran'];
             }
 
             // Hitung ulang total_harga jika berat atau layanan berubah
@@ -212,5 +246,54 @@ class OrderController extends Controller
         SendWhatsAppJob::dispatch($order->id);
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * DELETE /orders/{order} — hapus order.
+     * Hanya bisa dihapus jika status masih 'antrian' atau 'cuci'.
+     */
+    public function destroy(Order $order)
+    {
+        if (!in_array($order->status, [OrderStatus::Antrian->value, OrderStatus::Cuci->value])) {
+            return response()->json([
+                'message' => 'Order hanya bisa dihapus saat status Antrian atau Cuci.',
+            ], 422);
+        }
+
+        // Hapus foto jika ada
+        if ($order->foto) {
+            Storage::disk('public')->delete($order->foto);
+        }
+
+        $order->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * GET /tracking/{orderId} — public order tracking (tanpa auth).
+     */
+    public function tracking($orderId)
+    {
+        $order = Order::with(['customer', 'service'])
+            ->where('id', $orderId)
+            ->first();
+
+        if (!$order) {
+            return response()->json(['message' => 'Order tidak ditemukan.'], 404);
+        }
+
+        return response()->json([
+            'id' => $order->id,
+            'status' => $order->status,
+            'service' => $order->service?->nama_layanan,
+            'total_berat' => $order->total_berat,
+            'total_harga' => $order->total_harga,
+            'catatan' => $order->catatan,
+            'tgl_masuk' => $order->tgl_masuk?->toIso8601String(),
+            'tgl_selesai' => $order->tgl_selesai?->toIso8601String(),
+            'foto' => $order->foto,
+            'estimasi_selesai' => $order->getEstimatedCompletion(),
+        ]);
     }
 }

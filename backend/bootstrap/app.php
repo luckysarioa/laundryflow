@@ -15,6 +15,15 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         // Sanctum: stateful API untuk frontend yang pakai cookie/token.
         $middleware->statefulApi();
+
+        // Alias middleware
+        $middleware->alias([
+            'subscription' => \App\Http\Middleware\CheckSubscription::class,
+            'role' => \App\Http\Middleware\RoleMiddleware::class,
+        ]);
+
+        // Webhook Midtrans tidak butuh auth
+        $middleware->statefulApi()->stateless(['webhooks/*']);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Force JSON response untuk request API (route /api/*).

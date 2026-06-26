@@ -52,7 +52,7 @@ class SendWhatsAppJob implements ShouldQueue
         }
 
         $to = WhatsAppMessage::normalizeNumber($no_hp);
-        $message = WhatsAppMessage::forOrder($order);
+        $message = WhatsAppMessage::statusUpdate($order);
 
         $result = $gateway->send($to, $message);
 

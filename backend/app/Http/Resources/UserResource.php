@@ -14,6 +14,10 @@ class UserResource extends JsonResource
             'nama' => $this->nama,
             'email' => $this->email,
             'role' => $this->role,
+            'outlet_id' => $this->outlet_id,
+            'outlet' => new OutletResource($this->whenLoaded('outlet')),
+            'email_verified_at' => $this->email_verified_at?->toIso8601String(),
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }

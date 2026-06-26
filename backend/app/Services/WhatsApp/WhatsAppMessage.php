@@ -11,28 +11,100 @@ use App\Support\OrderStatus;
  */
 class WhatsAppMessage
 {
+    /**
+     * Build pesan notifikasi status order.
+     * Termasuk link tracking untuk customer.
+     */
     public static function forOrder(Order $order): string
     {
         $order->load(['customer', 'service']);
 
         $nama = $order->customer?->nama ?? 'Pelanggan';
         $status = OrderStatus::tryFrom($order->status)?->label() ?? ucfirst($order->status);
+        $trackingUrl = self::getTrackingUrl($order->id);
 
         $lines = [
             "Halo {$nama}! 👋",
-            'Laundry Anda sedang diproses.',
+            '',
+            "Status cucian Anda sudah diperbarui:",
+            "*{$status}*",
             '',
             "🧾 Order #{$order->id}",
             "• Layanan: {$order->service?->nama_layanan}",
             "• Berat: {$order->total_berat} kg",
             "• Total: Rp " . number_format((int) $order->total_harga, 0, ',', '.'),
-            "• Status saat ini: *{$status}*",
             "• Masuk: {$order->tgl_masuk?->translatedFormat('j M Y')}",
-            '',
-            'Terima kasih telah mempercayakan cuciannya kepada kami 🙏',
         ];
 
+        // Tambahkan estimasi selesai jika ada
+        $estimasi = $order->getEstimatedCompletion();
+        if ($estimasi && $order->status !== 'diambil') {
+            $lines[] = "• Estimasi selesai: {$estimasi}";
+        }
+
+        // Tambahkan link tracking
+        $lines[] = '';
+        $lines[] = "📍 Lacak status real-time:";
+        $lines[] = $trackingUrl;
+
+        $lines[] = '';
+        $lines[] = 'Terima kasih telah mempercayakan cuciannya kepada kami 🙏';
+
         return implode("\n", $lines);
+    }
+
+    /**
+     * Build pesan notifikasi status spesifik.
+     */
+    public static function statusUpdate(Order $order): string
+    {
+        $order->load(['customer', 'service']);
+
+        $nama = $order->customer?->nama ?? 'Pelanggan';
+        $status = OrderStatus::tryFrom($order->status)?->label() ?? ucfirst($order->status);
+        $trackingUrl = self::getTrackingUrl($order->id);
+
+        $statusEmoji = match($order->status) {
+            'cuci' => '🫧',
+            'setrika' => '👔',
+            'siap' => '✅',
+            'diambil' => '🎉',
+            default => '📋',
+        };
+
+        $lines = [
+            "{$statusEmoji} Halo {$nama}!",
+            '',
+            "Cucian Anda sedang *{$status}*.",
+            "Order #{$order->id}",
+        ];
+
+        // Tambahkan estimasi selesai jika belum selesai
+        if ($order->status !== 'diambil') {
+            $estimasi = $order->getEstimatedCompletion();
+            if ($estimasi) {
+                $lines[] = "⏱ Estimasi selesai: {$estimasi}";
+            }
+        }
+
+        if ($order->status === 'siap') {
+            $lines[] = '';
+            $lines[] = 'Cucian sudah siap diambil! Silakan datang ke laundry.';
+        }
+
+        $lines[] = '';
+        $lines[] = "📍 Lacak status: {$trackingUrl}";
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Generate tracking URL untuk order.
+     */
+    public static function getTrackingUrl(int $orderId): string
+    {
+        $baseUrl = config('app.url', 'http://localhost:3000');
+        return "{$baseUrl}/tracking/{$orderId}";
     }
 
     /** Normalisasi nomor HP ke format 62xxx. */

@@ -34,6 +34,7 @@ export interface Service {
   id: number;
   nama_layanan: string;
   harga_per_kilo: number;
+  is_active: boolean;
 }
 
 /** Alur status cucian — urutan ini WAJIB (lihat constants.ts STATUS_FLOW). */
@@ -50,9 +51,11 @@ export interface Order {
   total_harga: number; // dihitung: berat * harga_per_kilo
   status: OrderStatus;
   catatan?: string;
+  tipe_pembayaran?: TipePembayaran;
   foto?: string; // path foto bukti cucian
   tgl_masuk: string; // ISO date
   tgl_selesai: string | null; // ISO date, terisi saat status = diambil
+  transactions?: Transaction[];
 }
 
 /** Tabel: transactions */
@@ -73,12 +76,30 @@ export interface OrderInput {
   serviceId: number;
   total_berat: number;
   catatan?: string;
+  tipe_pembayaran?: TipePembayaran;
 }
 
 export interface CustomerInput {
   nama: string;
   no_hp: string;
   alamat: string;
+}
+
+export interface CustomerUpdate {
+  nama?: string;
+  no_hp?: string;
+  alamat?: string;
+}
+
+export interface ServiceInput {
+  nama_layanan: string;
+  harga_per_kilo: number;
+}
+
+export interface ServiceUpdate {
+  nama_layanan?: string;
+  harga_per_kilo?: number;
+  is_active?: boolean;
 }
 
 // ----- Tipe hasil agregasi (dashboard & laporan) -----
@@ -96,4 +117,122 @@ export interface RevenuePoint {
   label: string; // label untuk chart, mis. "12 Jun"
   omzet: number;
   jumlahOrder: number;
+}
+
+// ----- Subscription types -----
+
+export type SubscriptionStatus = 'trial' | 'active' | 'past_due' | 'expired' | 'cancelled' | 'none';
+
+export interface Plan {
+  id: number;
+  name: string;
+  label: string;
+  price_monthly: number;
+  price_yearly: number;
+  max_users: number;
+  max_orders_per_month: number;
+  max_outlets: number;
+  features: Record<string, boolean>;
+  trial_days: number;
+}
+
+export interface Subscription {
+  id: number;
+  status: SubscriptionStatus;
+  plan: Plan | null;
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  days_until_expiry: number | null;
+  orders_used: number;
+  orders_limit: number;
+}
+
+export interface SubscriptionResponse {
+  subscription: Subscription | null;
+  plans: Plan[];
+}
+
+export interface PaymentInfo {
+  id: number;
+  amount: number;
+  method: string;
+  status: string;
+  gateway_ref: string | null;
+  payment_url: string | null;
+  paid_at: string | null;
+  subscription: {
+    status: string;
+    plan: string;
+  };
+}
+
+export interface CheckoutResponse {
+  payment_id: number;
+  snap_token: string;
+  redirect_url: string;
+  order_id: string;
+}
+
+export interface UsageInfo {
+  orders_used: number;
+  orders_limit: number;
+  can_create_order: boolean;
+}
+
+// ----- Expense types -----
+
+export interface Expense {
+  id: number;
+  kategori: string;
+  deskripsi: string;
+  nominal: number;
+  tanggal: string;
+  created_at: string;
+}
+
+// ----- Outlet types -----
+
+export interface Outlet {
+  id: number;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  is_active: boolean;
+}
+
+// ----- User types (extended) -----
+
+export interface UserFull {
+  id: number;
+  nama: string;
+  email: string;
+  role: Role;
+  outlet_id: number | null;
+  outlet?: Outlet;
+  email_verified_at: string | null;
+  created_at: string;
+}
+
+// ----- Notification types -----
+
+export interface AppNotification {
+  id: number;
+  title: string;
+  message: string;
+  type: string;
+  link: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+// ----- Activity Log types -----
+
+export interface ActivityLog {
+  id: number;
+  user?: UserFull;
+  type: string;
+  subject_type: string | null;
+  subject_id: number | null;
+  properties: Record<string, any> | null;
+  created_at: string;
 }

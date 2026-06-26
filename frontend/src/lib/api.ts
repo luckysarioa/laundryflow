@@ -11,31 +11,81 @@
 // ==========================================================
 
 import type {
+  ActivityLog,
+  AppNotification,
   AuthSession,
+  CheckoutResponse,
   Customer,
   CustomerInput,
+  CustomerUpdate,
   DashboardStats,
+  Expense,
   Order,
   OrderInput,
   OrderStatus,
+  Outlet,
+  PaymentInfo,
+  Plan,
   RevenuePoint,
   Service,
+  ServiceInput,
+  ServiceUpdate,
+  Subscription,
+  SubscriptionResponse,
   Transaction,
+  UsageInfo,
+  UserFull,
 } from "./types";
 import {
+  mockActivateTrial,
   mockAdvanceOrder,
+  mockCancelSubscription,
+  mockCheckout,
   mockCreateCustomer,
+  mockCreateExpense,
+  mockCreateNotification,
   mockCreateOrder,
+  mockCreateOutlet,
+  mockCreateService,
+  mockCreateUser,
+  mockDeleteCustomer,
+  mockDeleteExpense,
+  mockDeleteNotification,
+  mockDeleteOrder,
+  mockDeleteOutlet,
+  mockDeleteService,
+  mockDeleteUser,
+  mockGetActivityLogs,
   mockGetCustomers,
   mockGetDashboardStats,
+  mockGetExpenses,
+  mockGetNotifications,
   mockGetOrder,
   mockGetOrders,
+  mockGetOutlets,
+  mockGetPaymentDetail,
   mockGetRevenue,
   mockGetServices,
+  mockGetSubscription,
   mockGetTransactions,
+  mockGetUsage,
+  mockGetUsers,
   mockLogin,
+  mockMarkAllRead,
+  mockMarkRead,
   mockSendWhatsApp,
   mockSetOrderStatus,
+  mockUpdateCustomer,
+  mockUpdateExpense,
+  mockUpdateOrder,
+  mockUpdateOutlet,
+  mockUpdateProfile,
+  mockUpdateService,
+  mockUpdateUser,
+  mockChangePassword,
+  mockForgotPassword,
+  mockGetCustomerOrders,
+  mockGetOrderTracking,
 } from "./mock/handlers";
 import { AUTH_STORAGE_KEY } from "./constants";
 
@@ -96,6 +146,27 @@ export const api = {
     return http<Service[]>("/services");
   },
 
+  async createService(input: ServiceInput): Promise<Service> {
+    if (USE_MOCK) return mockCreateService(input);
+    return http<Service>("/services", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  async updateService(id: number, input: ServiceUpdate): Promise<Service> {
+    if (USE_MOCK) return mockUpdateService(id, input);
+    return http<Service>(`/services/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+  },
+
+  async deleteService(id: number): Promise<{ success: boolean }> {
+    if (USE_MOCK) return mockDeleteService(id);
+    return http<{ success: boolean }>(`/services/${id}`, { method: "DELETE" });
+  },
+
   // ----------------- CUSTOMERS -----------------
 
   async getCustomers(): Promise<Customer[]> {
@@ -109,6 +180,19 @@ export const api = {
       method: "POST",
       body: JSON.stringify(input),
     });
+  },
+
+  async updateCustomer(id: number, input: CustomerUpdate): Promise<Customer> {
+    if (USE_MOCK) return mockUpdateCustomer(id, input);
+    return http<Customer>(`/customers/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+  },
+
+  async deleteCustomer(id: number): Promise<{ success: boolean }> {
+    if (USE_MOCK) return mockDeleteCustomer(id);
+    return http<{ success: boolean }>(`/customers/${id}`, { method: "DELETE" });
   },
 
   // ----------------- ORDERS -----------------
@@ -148,16 +232,17 @@ export const api = {
     });
   },
 
-  async updateOrder(id: number, input: { serviceId?: number; total_berat?: number; catatan?: string | null }): Promise<Order> {
-    if (USE_MOCK) {
-      // Mock update - in real app this would call backend
-      const order = await mockGetOrder(id);
-      return { ...order, ...input, catatan: input.catatan ?? order.catatan };
-    }
+  async updateOrder(id: number, input: { serviceId?: number; total_berat?: number; catatan?: string | null; tipe_pembayaran?: string | null }): Promise<Order> {
+    if (USE_MOCK) return mockUpdateOrder(id, input);
     return http<Order>(`/orders/${id}`, {
       method: "PATCH",
       body: JSON.stringify(input),
     });
+  },
+
+  async deleteOrder(id: number): Promise<{ success: boolean }> {
+    if (USE_MOCK) return mockDeleteOrder(id);
+    return http<{ success: boolean }>(`/orders/${id}`, { method: "DELETE" });
   },
 
   async uploadOrderFoto(id: number, foto: File): Promise<Order> {
@@ -302,5 +387,212 @@ export const api = {
     return http<{ success: boolean }>(`/orders/${orderId}/notify`, {
       method: "POST",
     });
+  },
+
+  // ----------------- SUBSCRIPTION -----------------
+
+  async getSubscription(): Promise<SubscriptionResponse> {
+    if (USE_MOCK) return mockGetSubscription();
+    return http<SubscriptionResponse>("/subscription");
+  },
+
+  async activateTrial(): Promise<{ message: string; subscription: { status: string; trial_ends_at: string; plan: string } }> {
+    if (USE_MOCK) return mockActivateTrial();
+    return http("/subscription/activate-trial", { method: "POST" });
+  },
+
+  async checkoutSubscription(input: { plan_id: number; billing: "monthly" | "yearly"; method: string }): Promise<CheckoutResponse> {
+    if (USE_MOCK) return mockCheckout(input);
+    return http<CheckoutResponse>("/subscription/checkout", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  async getPaymentDetail(id: number): Promise<PaymentInfo> {
+    if (USE_MOCK) return mockGetPaymentDetail(id);
+    return http<PaymentInfo>(`/subscription/payment/${id}`);
+  },
+
+  async cancelSubscription(): Promise<{ message: string }> {
+    if (USE_MOCK) return mockCancelSubscription();
+    return http("/subscription/cancel", { method: "POST" });
+  },
+
+  async getUsage(): Promise<UsageInfo> {
+    if (USE_MOCK) return mockGetUsage();
+    return http<UsageInfo>("/subscription/usage");
+  },
+
+  // ----------------- PROFILE -----------------
+
+  async getProfile(): Promise<UserFull> {
+    if (USE_MOCK) return { id: 1, nama: "Budi Santoso", email: "pemilik@laundryflow.id", role: "pemilik", outlet_id: null, email_verified_at: null, created_at: new Date().toISOString() };
+    return http<UserFull>("/profile");
+  },
+
+  async updateProfile(input: { nama?: string; email?: string }): Promise<UserFull> {
+    if (USE_MOCK) return mockUpdateProfile(input);
+    return http<UserFull>("/profile", { method: "PATCH", body: JSON.stringify(input) });
+  },
+
+  async changePassword(input: { current_password: string; password: string; password_confirmation: string }): Promise<{ message: string }> {
+    if (USE_MOCK) return mockChangePassword(input);
+    return http("/profile/password", { method: "POST", body: JSON.stringify(input) });
+  },
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    if (USE_MOCK) return mockForgotPassword(email);
+    return http("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) });
+  },
+
+  // ----------------- USERS -----------------
+
+  async getUsers(): Promise<UserFull[]> {
+    if (USE_MOCK) return mockGetUsers();
+    return http<UserFull[]>("/users");
+  },
+
+  async createUser(input: { nama: string; email: string; password: string; role: string }): Promise<UserFull> {
+    if (USE_MOCK) return mockCreateUser(input);
+    return http<UserFull>("/users", { method: "POST", body: JSON.stringify(input) });
+  },
+
+  async updateUser(id: number, input: { nama?: string; email?: string; role?: string; outlet_id?: number | null }): Promise<UserFull> {
+    if (USE_MOCK) return mockUpdateUser(id, input);
+    return http<UserFull>(`/users/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+  },
+
+  async deleteUser(id: number): Promise<{ success: boolean }> {
+    if (USE_MOCK) return mockDeleteUser(id);
+    return http(`/users/${id}`, { method: "DELETE" });
+  },
+
+  // ----------------- OUTLETS -----------------
+
+  async getOutlets(): Promise<Outlet[]> {
+    if (USE_MOCK) return mockGetOutlets();
+    return http<Outlet[]>("/outlets");
+  },
+
+  async createOutlet(input: { name: string; address?: string; phone?: string }): Promise<Outlet> {
+    if (USE_MOCK) return mockCreateOutlet(input);
+    return http<Outlet>("/outlets", { method: "POST", body: JSON.stringify(input) });
+  },
+
+  async updateOutlet(id: number, input: { name?: string; address?: string; phone?: string; is_active?: boolean }): Promise<Outlet> {
+    if (USE_MOCK) return mockUpdateOutlet(id, input);
+    return http<Outlet>(`/outlets/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+  },
+
+  async deleteOutlet(id: number): Promise<{ success: boolean }> {
+    if (USE_MOCK) return mockDeleteOutlet(id);
+    return http(`/outlets/${id}`, { method: "DELETE" });
+  },
+
+  // ----------------- EXPENSES -----------------
+
+  async getExpenses(filters?: { dari?: string; sampai?: string; kategori?: string }): Promise<Expense[]> {
+    if (USE_MOCK) return mockGetExpenses(filters);
+    const params = new URLSearchParams();
+    if (filters?.dari) params.set("dari", filters.dari);
+    if (filters?.sampai) params.set("sampai", filters.sampai);
+    if (filters?.kategori) params.set("kategori", filters.kategori);
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    return http<Expense[]>(`/expenses${qs}`);
+  },
+
+  async createExpense(input: { kategori: string; deskripsi: string; nominal: number; tanggal: string }): Promise<Expense> {
+    if (USE_MOCK) return mockCreateExpense(input);
+    return http<Expense>("/expenses", { method: "POST", body: JSON.stringify(input) });
+  },
+
+  async updateExpense(id: number, input: Partial<{ kategori: string; deskripsi: string; nominal: number; tanggal: string }>): Promise<Expense> {
+    if (USE_MOCK) return mockUpdateExpense(id, input);
+    return http<Expense>(`/expenses/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+  },
+
+  async deleteExpense(id: number): Promise<{ success: boolean }> {
+    if (USE_MOCK) return mockDeleteExpense(id);
+    return http(`/expenses/${id}`, { method: "DELETE" });
+  },
+
+  // ----------------- NOTIFICATIONS -----------------
+
+  async getNotifications(): Promise<{ notifications: AppNotification[]; unread_count: number }> {
+    if (USE_MOCK) return mockGetNotifications();
+    return http("/notifications");
+  },
+
+  async markNotificationRead(id: number): Promise<{ success: boolean }> {
+    if (USE_MOCK) return mockMarkRead(id);
+    return http(`/notifications/${id}/read`, { method: "POST" });
+  },
+
+  async markAllNotificationsRead(): Promise<{ success: boolean }> {
+    if (USE_MOCK) return mockMarkAllRead();
+    return http("/notifications/read-all", { method: "POST" });
+  },
+
+  async deleteNotification(id: number): Promise<{ success: boolean }> {
+    if (USE_MOCK) return mockDeleteNotification(id);
+    return http(`/notifications/${id}`, { method: "DELETE" });
+  },
+
+  // ----------------- ACTIVITY LOGS -----------------
+
+  async getActivityLogs(filters?: { type?: string; user_id?: number }): Promise<ActivityLog[]> {
+    if (USE_MOCK) return mockGetActivityLogs(filters);
+    const params = new URLSearchParams();
+    if (filters?.type) params.set("type", filters.type);
+    if (filters?.user_id) params.set("user_id", String(filters.user_id));
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    return http<ActivityLog[]>(`/activity-logs${qs}`);
+  },
+
+  // ----------------- CUSTOMER ORDERS -----------------
+
+  async getCustomerOrders(customerId: number): Promise<Order[]> {
+    if (USE_MOCK) return mockGetCustomerOrders(customerId);
+    return http<Order[]>(`/customers/${customerId}/orders`);
+  },
+
+  // ----------------- ORDER TRACKING (PUBLIC) -----------------
+
+  async getOrderTracking(orderId: number): Promise<any> {
+    if (USE_MOCK) return mockGetOrderTracking(orderId);
+    return http(`/tracking/${orderId}`);
+  },
+
+  // ----------------- RECEIPT -----------------
+
+  async downloadReceipt(orderId: number): Promise<void> {
+    if (USE_MOCK) {
+      const content = `Struk Order #${orderId}\n\nIni adalah mock receipt. Dalam versi produksi, ini akan mengunduh file PDF.`;
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `struk-order-${orderId}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      return;
+    }
+    const token = getToken();
+    const res = await fetch(`${API_URL}/orders/${orderId}/receipt/download`, {
+      headers: { Accept: "application/pdf", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    });
+    if (!res.ok) throw new Error(`Download gagal (${res.status})`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `struk-order-${orderId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   },
 };

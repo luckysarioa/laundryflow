@@ -154,4 +154,106 @@ class ReportController extends Controller
 
         return $pdf->download($filename);
     }
+
+    /**
+     * GET /reports/orders/csv — export orders ke CSV.
+     */
+    public function ordersCsv(Request $request)
+    {
+        $data = $request->validate([
+            'dari' => ['nullable', 'date'],
+            'sampai' => ['nullable', 'date', 'after_or_equal:dari'],
+            'status' => ['nullable', Rule::in(array_column(OrderStatus::cases(), 'value'))],
+        ]);
+
+        $query = Order::with(['customer', 'service'])->latest('tgl_masuk');
+
+        if (!empty($data['dari']) && !empty($data['sampai'])) {
+            $query->whereBetween('tgl_masuk', [
+                Carbon::parse($data['dari'])->startOfDay(),
+                Carbon::parse($data['sampai'])->endOfDay(),
+            ]);
+        }
+
+        if (!empty($data['status'])) {
+            $query->where('status', $data['status']);
+        }
+
+        $orders = $query->get();
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="laporan-order-' . now()->format('Y-m-d') . '.csv"',
+        ];
+
+        $callback = function () use ($orders) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['ID', 'Pelanggan', 'HP', 'Layanan', 'Berat (kg)', 'Total (Rp)', 'Status', 'Tanggal Masuk', 'Tanggal Selesai']);
+
+            foreach ($orders as $order) {
+                fputcsv($file, [
+                    $order->id,
+                    $order->customer->nama ?? '-',
+                    $order->customer->no_hp ?? '-',
+                    $order->service->nama_layanan ?? '-',
+                    $order->total_berat,
+                    $order->total_harga,
+                    $order->status,
+                    $order->tgl_masuk?->format('d/m/Y H:i'),
+                    $order->tgl_selesai?->format('d/m/Y H:i'),
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * GET /reports/revenue/csv — export revenue ke CSV.
+     */
+    public function revenueCsv(Request $request)
+    {
+        $data = $request->validate([
+            'dari' => ['required', 'date'],
+            'sampai' => ['required', 'date', 'after_or_equal:dari'],
+        ]);
+
+        $dari = Carbon::parse($data['dari'])->startOfDay();
+        $sampai = Carbon::parse($data['sampai'])->endOfDay();
+
+        $lunasValues = [OrderStatus::Siap->value, OrderStatus::Diambil->value];
+
+        $orders = Order::whereIn('status', $lunasValues)
+            ->whereBetween('tgl_masuk', [$dari, $sampai])
+            ->with(['customer', 'service'])
+            ->get();
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="laporan-pendapatan-' . now()->format('Y-m-d') . '.csv"',
+        ];
+
+        $callback = function () use ($orders) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['Tanggal', 'ID Order', 'Pelanggan', 'Layanan', 'Berat (kg)', 'Total (Rp)', 'Pembayaran']);
+
+            foreach ($orders->sortBy('tgl_masuk') as $order) {
+                fputcsv($file, [
+                    $order->tgl_masuk?->format('d/m/Y'),
+                    $order->id,
+                    $order->customer->nama ?? '-',
+                    $order->service->nama_layanan ?? '-',
+                    $order->total_berat,
+                    $order->total_harga,
+                    $order->transactions->first()->tipe_pembayaran ?? '-',
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }

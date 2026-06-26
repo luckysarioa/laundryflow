@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
+import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { useAuth } from "@/context/AuthContext";
 import { formatRupiah, formatRelative } from "@/lib/format";
 import { ROLES, STATUS_FLOW, STATUS_LABEL } from "@/lib/constants";
@@ -57,6 +58,9 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="space-y-4">
+          {/* Subscription Banner */}
+          <SubscriptionBanner />
+
           {/* Omzet hari ini (kartu utama) */}
           <div className="rounded-2xl bg-gradient-to-br from-brand-600 to-accent-600 p-5 text-white shadow-lg shadow-brand-600/20">
             <p className="text-sm text-brand-50/90">Omzet Hari Ini</p>
