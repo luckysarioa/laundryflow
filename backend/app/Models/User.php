@@ -79,6 +79,11 @@ class User extends Authenticatable
         return $this->role === 'kasir';
     }
 
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'superadmin';
+    }
+
     // ----- Subscription helpers -----
 
     public function getActiveSubscription(): ?Subscription

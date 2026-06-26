@@ -18,6 +18,9 @@ use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WebhookController;
+use App\Http\Controllers\Api\SuperAdmin\TenantController;
+use App\Http\Controllers\Api\SuperAdmin\SubscriptionController as SuperAdminSubscriptionController;
+use App\Http\Controllers\Api\SuperAdmin\RevenueController;
 use Illuminate\Support\Facades\Route;
 
 // ==========================================================
@@ -40,8 +43,9 @@ Route::prefix('auth')->group(function () {
 // Public order tracking (no auth)
 Route::get('tracking/{orderId}', [OrderController::class, 'tracking']);
 
-// Webhook routes (no auth)
-Route::post('webhooks/midtrans', [WebhookController::class, 'midtrans']);
+// Webhook routes (no auth, stateless)
+Route::post('webhooks/midtrans', [WebhookController::class, 'midtrans'])
+    ->middleware('throttle:100,1');
 
 // Authenticated routes
 // Middleware 'subscription' menambah header X-Subscription-Status (info untuk
@@ -165,5 +169,32 @@ Route::middleware(['auth:sanctum', 'subscription'])->group(function () {
         Route::post('backups', [BackupController::class, 'store']);
         Route::get('backups/{filename}/download', [BackupController::class, 'download']);
         Route::delete('backups/{filename}', [BackupController::class, 'destroy']);
+    });
+
+    // ---- Super Admin Routes ----
+    Route::middleware('role:superadmin')->prefix('superadmin')->group(function () {
+        // Dashboard Stats
+        Route::get('stats', [TenantController::class, 'stats']);
+
+        // Tenants Management
+        Route::get('tenants', [TenantController::class, 'index']);
+        Route::get('tenants/{tenant}', [TenantController::class, 'show']);
+        Route::patch('tenants/{tenant}/status', [TenantController::class, 'updateStatus']);
+
+        // Plans Management
+        Route::get('plans', [SuperAdminSubscriptionController::class, 'plans']);
+        Route::post('plans', [SuperAdminSubscriptionController::class, 'storePlan']);
+        Route::patch('plans/{plan}', [SuperAdminSubscriptionController::class, 'updatePlan']);
+        Route::delete('plans/{plan}', [SuperAdminSubscriptionController::class, 'destroyPlan']);
+
+        // Subscriptions Management
+        Route::get('subscriptions', [SuperAdminSubscriptionController::class, 'subscriptions']);
+        Route::get('subscriptions/stats', [SuperAdminSubscriptionController::class, 'stats']);
+
+        // Revenue
+        Route::get('revenue', [RevenueController::class, 'index']);
+        Route::get('revenue/trend', [RevenueController::class, 'trend']);
+        Route::get('revenue/by-plan', [RevenueController::class, 'byPlan']);
+        Route::get('revenue/report', [RevenueController::class, 'report']);
     });
 });

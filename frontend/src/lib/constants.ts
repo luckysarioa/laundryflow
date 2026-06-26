@@ -41,6 +41,7 @@ export const STATUS_STYLE: Record<
 export const ROLES: Record<Role, string> = {
   pemilik: "Pemilik",
   kasir: "Kasir",
+  superadmin: "Super Admin",
 };
 
 /** Kunci penyimpanan session di localStorage. */

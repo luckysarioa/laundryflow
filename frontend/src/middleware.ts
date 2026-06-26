@@ -14,12 +14,14 @@ import { NextResponse, type NextRequest } from "next/server";
 // ==========================================================
 
 const PROTECTED_PREFIXES = ["/dashboard", "/orders", "/status", "/customers", "/reports", "/settings"];
+const SUPERADMIN_PREFIXES = ["/superadmin"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
+  const isSuperAdmin = SUPERADMIN_PREFIXES.some((p) => pathname.startsWith(p));
 
-  if (!isProtected) return NextResponse.next();
+  if (!isProtected && !isSuperAdmin) return NextResponse.next();
 
   const authed = request.cookies.get("laundryflow_authed")?.value === "1";
 
@@ -28,6 +30,9 @@ export function middleware(request: NextRequest) {
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
   }
+
+  // For superadmin routes, we check the role in the client-side layout
+  // Since we can't access localStorage in middleware, we rely on the layout guard
 
   return NextResponse.next();
 }

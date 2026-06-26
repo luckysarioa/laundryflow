@@ -4,7 +4,7 @@
 // sehingga ketika mock diganti dengan API sungguhan, tidak ada perubahan tipe.
 // ==========================================================
 
-export type Role = "pemilik" | "kasir";
+export type Role = "pemilik" | "kasir" | "superadmin";
 
 /** Tabel: users */
 export interface User {

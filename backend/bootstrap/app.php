@@ -21,9 +21,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'subscription' => \App\Http\Middleware\CheckSubscription::class,
             'role' => \App\Http\Middleware\RoleMiddleware::class,
         ]);
-
-        // Webhook Midtrans tidak butuh auth
-        $middleware->statefulApi()->stateless(['webhooks/*']);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Force JSON response untuk request API (route /api/*).

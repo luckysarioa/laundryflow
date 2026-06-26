@@ -698,4 +698,131 @@ export const api = {
     if (USE_MOCK) return { message: "Backup berhasil dihapus." };
     return http(`/backups/${filename}`, { method: "DELETE" });
   },
+
+  // ----------------- SUPER ADMIN -----------------
+
+  async getSuperAdminStats(): Promise<any> {
+    if (USE_MOCK) {
+      return {
+        total_tenants: 12,
+        active_tenants: 10,
+        trial_tenants: 2,
+        suspended_tenants: 0,
+        total_revenue: 12500000,
+        monthly_revenue: 2500000,
+      };
+    }
+    return http("/superadmin/stats");
+  },
+
+  async getTenants(params?: { search?: string; status?: string; page?: number }): Promise<any> {
+    if (USE_MOCK) {
+      return {
+        data: [
+          { id: 1, name: "Laundry Bersih", email: "budi@laundrybersih.com", role: "pemilik", subscription: { status: "active", plan: { label: "Pro" } }, orders_count: 1250 },
+          { id: 2, name: "Cuci Bersih", email: "andi@cucibersih.com", role: "pemilik", subscription: { status: "active", plan: { label: "Enterprise" } }, orders_count: 3200 },
+        ],
+        current_page: 1,
+        last_page: 1,
+        per_page: 15,
+        total: 2,
+      };
+    }
+    const searchParams = new URLSearchParams();
+    if (params?.search) searchParams.set("search", params.search);
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.page) searchParams.set("page", String(params.page));
+    const qs = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return http(`/superadmin/tenants${qs}`);
+  },
+
+  async getTenant(id: number): Promise<any> {
+    if (USE_MOCK) {
+      return { id, name: "Laundry Bersih", email: "budi@laundrybersih.com", role: "pemilik" };
+    }
+    return http(`/superadmin/tenants/${id}`);
+  },
+
+  async updateTenantStatus(id: number, status: string): Promise<any> {
+    if (USE_MOCK) return { message: "Status updated" };
+    return http(`/superadmin/tenants/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  async getSuperAdminPlans(): Promise<any[]> {
+    if (USE_MOCK) {
+      return [
+        { id: 1, name: "free", label: "Free", price_monthly: 0, price_yearly: 0, max_users: 1, max_orders_per_month: 100, max_outlets: 1, features: { pdf: false, wa: false, backup: false, kanban: true }, trial_days: 0, subscribers_count: 4 },
+        { id: 2, name: "pro", label: "Pro", price_monthly: 99000, price_yearly: 990000, max_users: 3, max_orders_per_month: 0, max_outlets: 3, features: { pdf: true, wa: true, backup: true, kanban: true }, trial_days: 7, subscribers_count: 6 },
+        { id: 3, name: "enterprise", label: "Enterprise", price_monthly: 299000, price_yearly: 2990000, max_users: 0, max_orders_per_month: 0, max_outlets: 0, features: { pdf: true, wa: true, backup: true, kanban: true, multi_outlet: true }, trial_days: 14, subscribers_count: 2 },
+      ];
+    }
+    return http("/superadmin/plans");
+  },
+
+  async createSuperAdminPlan(input: any): Promise<any> {
+    if (USE_MOCK) return { id: Date.now(), ...input };
+    return http("/superadmin/plans", { method: "POST", body: JSON.stringify(input) });
+  },
+
+  async updateSuperAdminPlan(id: number, input: any): Promise<any> {
+    if (USE_MOCK) return { id, ...input };
+    return http(`/superadmin/plans/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+  },
+
+  async deleteSuperAdminPlan(id: number): Promise<any> {
+    if (USE_MOCK) return { message: "Plan deleted" };
+    return http(`/superadmin/plans/${id}`, { method: "DELETE" });
+  },
+
+  async getSuperAdminSubscriptions(params?: { status?: string; page?: number }): Promise<any> {
+    if (USE_MOCK) {
+      return {
+        data: [
+          { id: 1, user: { name: "Budi Santoso" }, plan: { label: "Pro" }, status: "active", amount: 99000 },
+        ],
+        current_page: 1,
+        last_page: 1,
+        per_page: 15,
+        total: 1,
+      };
+    }
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.page) searchParams.set("page", String(params.page));
+    const qs = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return http(`/superadmin/subscriptions${qs}`);
+  },
+
+  async getSuperAdminRevenue(): Promise<any> {
+    if (USE_MOCK) {
+      return { total: 12500000, monthly: 2500000, yearly: 30000000 };
+    }
+    return http("/superadmin/revenue");
+  },
+
+  async getSuperAdminRevenueTrend(months?: number): Promise<any[]> {
+    if (USE_MOCK) {
+      return [
+        { month: "2024-01", revenue: 1800000 },
+        { month: "2024-02", revenue: 2100000 },
+        { month: "2024-03", revenue: 2500000 },
+      ];
+    }
+    const qs = months ? `?months=${months}` : "";
+    return http(`/superadmin/revenue/trend${qs}`);
+  },
+
+  async getSuperAdminRevenueByPlan(): Promise<any[]> {
+    if (USE_MOCK) {
+      return [
+        { id: 1, label: "Free", subscribers_count: 4, revenue: 0 },
+        { id: 2, label: "Pro", subscribers_count: 6, revenue: 1980000 },
+        { id: 3, label: "Enterprise", subscribers_count: 2, revenue: 598000 },
+      ];
+    }
+    return http("/superadmin/revenue/by-plan");
+  },
 };
