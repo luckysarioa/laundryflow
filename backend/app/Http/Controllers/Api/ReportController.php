@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Expense;
 use App\Models\Order;
+use App\Models\Setting;
 use App\Support\OrderStatus;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -255,5 +257,176 @@ class ReportController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * GET /reports/profit-loss?dari=&sampai=
+     *
+     * Laporan Laba/Rugi: Revenue - Expenses.
+     */
+    public function profitLoss(Request $request)
+    {
+        $data = $request->validate([
+            'dari' => ['required', 'date'],
+            'sampai' => ['required', 'date', 'after_or_equal:dari'],
+        ]);
+
+        $dari = Carbon::parse($data['dari'])->startOfDay();
+        $sampai = Carbon::parse($data['sampai'])->endOfDay();
+
+        // Revenue
+        $lunasValues = [OrderStatus::Siap->value, OrderStatus::Diambil->value];
+        $totalRevenue = Order::whereIn('status', $lunasValues)
+            ->whereBetween('tgl_masuk', [$dari, $sampai])
+            ->sum('total_harga');
+
+        // Expenses
+        $totalExpenses = Expense::whereBetween('tanggal', [$dari->toDateString(), $sampai->toDateString()])
+            ->sum('nominal');
+
+        // Profit
+        $profit = $totalRevenue - $totalExpenses;
+
+        // Daily breakdown
+        $revenueByDay = Order::whereIn('status', $lunasValues)
+            ->whereBetween('tgl_masuk', [$dari, $sampai])
+            ->selectRaw('DATE(tgl_masuk) as tanggal, SUM(total_harga) as total')
+            ->groupBy('tanggal')
+            ->pluck('total', 'tanggal');
+
+        $expenseByDay = Expense::whereBetween('tanggal', [$dari->toDateString(), $sampai->toDateString()])
+            ->selectRaw('tanggal, SUM(nominal) as total')
+            ->groupBy('tanggal')
+            ->pluck('total', 'tanggal');
+
+        $daily = [];
+        $cursor = $dari->copy();
+        while ($cursor <= $sampai) {
+            $key = $cursor->toDateString();
+            $rev = (int) ($revenueByDay[$key] ?? 0);
+            $exp = (int) ($expenseByDay[$key] ?? 0);
+            $daily[] = [
+                'tanggal' => $key,
+                'label' => $cursor->translatedFormat('j M'),
+                'revenue' => $rev,
+                'expenses' => $exp,
+                'profit' => $rev - $exp,
+            ];
+            $cursor->addDay();
+        }
+
+        // Expense breakdown by kategori
+        $expenseByCategory = Expense::whereBetween('tanggal', [$dari->toDateString(), $sampai->toDateString()])
+            ->selectRaw('kategori, SUM(nominal) as total')
+            ->groupBy('kategori')
+            ->pluck('total', 'kategori');
+
+        return response()->json([
+            'summary' => [
+                'total_revenue' => (int) $totalRevenue,
+                'total_expenses' => (int) $totalExpenses,
+                'profit' => (int) $profit,
+                'margin' => $totalRevenue > 0 ? round(($profit / $totalRevenue) * 100, 1) : 0,
+            ],
+            'daily' => $daily,
+            'expenses_by_category' => $expenseByCategory,
+        ]);
+    }
+
+    /**
+     * GET /reports/expenses/csv?dari=&sampai=&kategori=
+     *
+     * Export pengeluaran ke CSV.
+     */
+    public function expensesCsv(Request $request)
+    {
+        $data = $request->validate([
+            'dari' => ['nullable', 'date'],
+            'sampai' => ['nullable', 'date', 'after_or_equal:dari'],
+            'kategori' => ['nullable', 'string'],
+        ]);
+
+        $query = Expense::query();
+
+        if (!empty($data['dari']) && !empty($data['sampai'])) {
+            $query->whereBetween('tanggal', [
+                Carbon::parse($data['dari'])->toDateString(),
+                Carbon::parse($data['sampai'])->toDateString(),
+            ]);
+        }
+
+        if (!empty($data['kategori'])) {
+            $query->where('kategori', $data['kategori']);
+        }
+
+        $expenses = $query->orderBy('tanggal', 'desc')->get();
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="laporan-pengeluaran-' . now()->format('Y-m-d') . '.csv"',
+        ];
+
+        $callback = function () use ($expenses) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['Tanggal', 'Kategori', 'Deskripsi', 'Nominal (Rp)']);
+
+            foreach ($expenses as $expense) {
+                fputcsv($file, [
+                    $expense->tanggal,
+                    $expense->kategori,
+                    $expense->deskripsi,
+                    $expense->nominal,
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * GET /reports/profit-loss/pdf?dari=&sampai=
+     *
+     * Export laporan Laba/Rugi ke PDF.
+     */
+    public function profitLossPdf(Request $request)
+    {
+        $data = $request->validate([
+            'dari' => ['required', 'date'],
+            'sampai' => ['required', 'date', 'after_or_equal:dari'],
+        ]);
+
+        $dari = Carbon::parse($data['dari'])->startOfDay();
+        $sampai = Carbon::parse($data['sampai'])->endOfDay();
+
+        $lunasValues = [OrderStatus::Siap->value, OrderStatus::Diambil->value];
+
+        $totalRevenue = Order::whereIn('status', $lunasValues)
+            ->whereBetween('tgl_masuk', [$dari, $sampai])
+            ->sum('total_harga');
+
+        $expenses = Expense::whereBetween('tanggal', [$dari->toDateString(), $sampai->toDateString()])
+            ->get();
+
+        $totalExpenses = $expenses->sum('nominal');
+        $profit = $totalRevenue - $totalExpenses;
+
+        $expenseByCategory = $expenses->groupBy('kategori')->map(function ($items) {
+            return $items->sum('nominal');
+        });
+
+        $pdf = Pdf::loadView('reports.profit-loss', [
+            'dari' => $dari->translatedFormat('d F Y'),
+            'sampai' => $sampai->translatedFormat('d F Y'),
+            'totalRevenue' => $totalRevenue,
+            'totalExpenses' => $totalExpenses,
+            'profit' => $profit,
+            'expenseByCategory' => $expenseByCategory,
+        ]);
+
+        $filename = "laporan-laba-rugi-{$dari->format('Y-m-d')}-sampai-{$sampai->format('Y-m-d')}.pdf";
+
+        return $pdf->download($filename);
     }
 }

@@ -2,15 +2,18 @@
 
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BackupController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\OutletController;
+use App\Http\Controllers\Api\PlanController;
 use App\Http\Controllers\Api\ReceiptController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\UserController;
@@ -41,7 +44,9 @@ Route::get('tracking/{orderId}', [OrderController::class, 'tracking']);
 Route::post('webhooks/midtrans', [WebhookController::class, 'midtrans']);
 
 // Authenticated routes
-Route::middleware('auth:sanctum')->group(function () {
+// Middleware 'subscription' menambah header X-Subscription-Status (info untuk
+// frontend) — TIDAK memblokir request. Selalu aman dipasang di seluruh route auth.
+Route::middleware(['auth:sanctum', 'subscription'])->group(function () {
 
     // ---- Profile ----
     Route::get('profile', [UserController::class, 'profile']);
@@ -110,6 +115,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('reports/orders/pdf', [ReportController::class, 'ordersPdf']);
     Route::get('reports/orders/csv', [ReportController::class, 'ordersCsv']);
     Route::get('reports/revenue/csv', [ReportController::class, 'revenueCsv']);
+    Route::get('reports/profit-loss', [ReportController::class, 'profitLoss']);
+    Route::get('reports/expenses/csv', [ReportController::class, 'expensesCsv']);
+    Route::get('reports/profit-loss/pdf', [ReportController::class, 'profitLossPdf']);
 
     // ---- Transactions ----
     Route::get('transactions', [TransactionController::class, 'index']);
@@ -132,4 +140,30 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('subscription/payment/{id}', [SubscriptionController::class, 'paymentDetail']);
     Route::post('subscription/cancel', [SubscriptionController::class, 'cancel']);
     Route::get('subscription/usage', [SubscriptionController::class, 'usage']);
+
+    // ---- Plans Management (pemilik only) ----
+    Route::middleware('role:pemilik')->group(function () {
+        Route::get('plans', [PlanController::class, 'index']);
+        Route::post('plans', [PlanController::class, 'store']);
+        Route::get('plans/{plan}', [PlanController::class, 'show']);
+        Route::patch('plans/{plan}', [PlanController::class, 'update']);
+        Route::delete('plans/{plan}', [PlanController::class, 'destroy']);
+    });
+
+    // ---- System Settings (pemilik only) ----
+    Route::middleware('role:pemilik')->group(function () {
+        Route::get('settings', [SettingsController::class, 'index']);
+        Route::get('settings/{group}', [SettingsController::class, 'show']);
+        Route::patch('settings', [SettingsController::class, 'update']);
+        Route::post('settings/logo', [SettingsController::class, 'uploadLogo']);
+        Route::delete('settings/logo', [SettingsController::class, 'deleteLogo']);
+    });
+
+    // ---- Backup (pemilik only) ----
+    Route::middleware('role:pemilik')->group(function () {
+        Route::get('backups', [BackupController::class, 'index']);
+        Route::post('backups', [BackupController::class, 'store']);
+        Route::get('backups/{filename}/download', [BackupController::class, 'download']);
+        Route::delete('backups/{filename}', [BackupController::class, 'destroy']);
+    });
 });

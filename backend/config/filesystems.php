@@ -17,5 +17,10 @@ return [
             'visibility' => 'public',
             'throw' => false,
         ],
+        'backups' => [
+            'driver' => 'local',
+            'root' => storage_path('app'),
+            'throw' => false,
+        ],
     ],
 ];

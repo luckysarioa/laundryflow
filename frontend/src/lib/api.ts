@@ -595,4 +595,107 @@ export const api = {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   },
+
+  // ----------------- SETTINGS -----------------
+
+  async getSettings(): Promise<Record<string, Record<string, string | null>>> {
+    if (USE_MOCK) {
+      return {
+        business: { business_name: "LaundryFlow", business_address: "", business_phone: "", business_email: "", business_logo: null },
+        finance: { currency: "IDR", tax_rate: "0", tax_enabled: "false" },
+        notification: { whatsapp_enabled: "true", auto_whatsapp: "true" },
+        receipt: { receipt_footer: "Terima kasih atas kunjungan Anda" },
+        system: { timezone: "Asia/Jakarta", date_format: "d/m/Y", language: "id" },
+      };
+    }
+    return http("/settings");
+  },
+
+  async updateSettings(data: Record<string, string>): Promise<{ message: string }> {
+    if (USE_MOCK) return { message: "Pengaturan berhasil disimpan." };
+    return http("/settings", { method: "PATCH", body: JSON.stringify(data) });
+  },
+
+  // ----------------- PLANS -----------------
+
+  async getPlans(): Promise<Plan[]> {
+    if (USE_MOCK) {
+      return [
+        { id: 1, name: "free", label: "Free", price_monthly: 0, price_yearly: 0, max_users: 1, max_orders_per_month: 100, max_outlets: 1, features: { pdf: false, wa: false, backup: false, kanban: true }, trial_days: 0 },
+        { id: 2, name: "pro", label: "Pro", price_monthly: 99000, price_yearly: 990000, max_users: 3, max_orders_per_month: 0, max_outlets: 3, features: { pdf: true, wa: true, backup: true, kanban: true }, trial_days: 7 },
+        { id: 3, name: "enterprise", label: "Enterprise", price_monthly: 299000, price_yearly: 2990000, max_users: 0, max_orders_per_month: 0, max_outlets: 0, features: { pdf: true, wa: true, backup: true, kanban: true, multi_outlet: true }, trial_days: 14 },
+      ];
+    }
+    return http<Plan[]>("/plans");
+  },
+
+  async createPlan(input: any): Promise<Plan> {
+    if (USE_MOCK) return { id: Date.now(), ...input };
+    return http<Plan>("/plans", { method: "POST", body: JSON.stringify(input) });
+  },
+
+  async updatePlan(id: number, input: any): Promise<Plan> {
+    if (USE_MOCK) return { id, ...input };
+    return http<Plan>(`/plans/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+  },
+
+  async deletePlan(id: number): Promise<{ message: string }> {
+    if (USE_MOCK) return { message: "Plan berhasil dihapus." };
+    return http(`/plans/${id}`, { method: "DELETE" });
+  },
+
+  // ----------------- PROFIT/LOSS -----------------
+
+  async getProfitLoss(dari: string, sampai: string): Promise<any> {
+    if (USE_MOCK) {
+      // Mock data
+      return {
+        summary: { total_revenue: 5000000, total_expenses: 1500000, profit: 3500000, margin: 70 },
+        daily: [
+          { tanggal: dari, label: "1 Jun", revenue: 500000, expenses: 150000, profit: 350000 },
+        ],
+        expenses_by_category: { Sabun: 800000, Listrik: 500000, Lainnya: 200000 },
+      };
+    }
+    return http(`/reports/profit-loss?dari=${dari}&sampai=${sampai}`);
+  },
+
+  getProfitLossPdfUrl(dari: string, sampai: string): string {
+    if (USE_MOCK) return "#";
+    const token = getToken();
+    return `${API_URL}/reports/profit-loss/pdf?dari=${dari}&sampai=${sampai}${token ? `&token=${token}` : ""}`;
+  },
+
+  getExpensesCsvUrl(dari: string, sampai: string): string {
+    if (USE_MOCK) return "#";
+    const token = getToken();
+    return `${API_URL}/reports/expenses/csv?dari=${dari}&sampai=${sampai}${token ? `&token=${token}` : ""}`;
+  },
+
+  // ----------------- BACKUPS -----------------
+
+  async getBackups(): Promise<any[]> {
+    if (USE_MOCK) return [];
+    return http("/backups");
+  },
+
+  async createBackup(): Promise<any> {
+    if (USE_MOCK) return { backup: { name: "backup-mock.sql", size: 1024, date: new Date().toISOString() } };
+    return http("/backups", { method: "POST" });
+  },
+
+  async downloadBackup(filename: string): Promise<Blob> {
+    if (USE_MOCK) return new Blob(["mock backup"], { type: "text/plain" });
+    const token = getToken();
+    const res = await fetch(`${API_URL}/backups/${filename}/download`, {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    });
+    if (!res.ok) throw new Error(`Download gagal (${res.status})`);
+    return res.blob();
+  },
+
+  async deleteBackup(filename: string): Promise<{ message: string }> {
+    if (USE_MOCK) return { message: "Backup berhasil dihapus." };
+    return http(`/backups/${filename}`, { method: "DELETE" });
+  },
 };
