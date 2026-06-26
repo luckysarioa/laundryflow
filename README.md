@@ -160,15 +160,22 @@ NEXT_PUBLIC_API_URL=https://api.domainanda.com/api  # build-time, butuh rebuild
    - Coolify auto-issue sertifikat Let's Encrypt untuk keduanya.
 
 **7. Deploy.** Coolify build semua image & start service.
-   - Backend entrypoint: key (bila kosong) → config cache → migrate → Apache.
+   - Backend entrypoint: key (bila kosong) → config cache → migrate → seed data sistem → Apache.
    - Queue: tunggu DB siap → config cache → `queue:work`.
-   - `APP_ENV=production` → **seeder dilewati** (tabel kosong). Buat user pertama via... *catatan: karena login butuh user, untuk produksi buat user admin manual via `php artisan tinker`*.
+   - Akun **superadmin** & **master plan** otomatis dibuat saat start container (`SystemDataSeeder`), terlepas dari `APP_ENV`. Hanya data demo (user/service/order contoh) yang dilewati di production.
 
-> ⚠️ **PENTING:** Karena `APP_ENV=production` melewati seeder, **tidak ada akun demo**.
-> Buat user admin pertama setelah deploy pertama:
+> ✅ **Login Super Admin** — akun dibuat otomatis saat deploy. Default:
+> ```
+> Email    : superadmin@laundryflow.id
+> Password : password
+> ```
+> Ubah kredensial default via env: `SUPERADMIN_EMAIL`, `SUPERADMIN_NAME`, `SUPERADMIN_PASSWORD`.
+>
+> Untuk deployment yang **sudah berjalan** (tanpa redeploy), buat/perbarui akun superadmin langsung:
 > ```bash
-> docker compose exec backend php artisan tinker
-> # >>> \App\Models\User::create(['nama'=>'Admin','email'=>'admin@x.com','password'=>bcrypt('pass'),'role'=>'pemilik']);
+> docker compose exec backend php artisan app:create-superadmin
+> # atau dengan kredensial kustom:
+> docker compose exec backend php artisan app:create-superadmin --email=admin@x.com --password=rahasia
 > ```
 
 ### Deploy manual (tanpa Coolify)
@@ -183,7 +190,7 @@ docker compose logs -f
 
 ### Catatan operasional
 - **Database persisten** via volume `db_data` → data aman saat restart/redeploy.
-- **Migration otomatis** tiap start backend (`migrate --force`). Seeder **hanya saat `APP_ENV != production`**.
+- **Migration otomatis** tiap start backend (`migrate --force`). Data **sistem** (superadmin + master plan) selalu di-seed; data demo hanya saat `APP_ENV != production`.
 - **APP_KEY wajib persisten** — set eksplisit di env, jangan andalkan auto-generate (invalidate session tiap redeploy).
 - **APP_URL** harus URL publik backend (HTTPS) — dipakai untuk storage URL & link WhatsApp.
 - **WhatsApp Gateway** masih dummy (log). Implement provider nyata lalu rebuild image backend — compose tak berubah.

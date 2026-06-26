@@ -34,15 +34,20 @@ php artisan route:cache
 #      Tanpa ini, file yang di-upload (foto order) akan 404 saat diakses via /storage/*.
 php artisan storage:link
 
-# 4) Migration. Seeding HANYA saat APP_ENV != production (data demo).
-#    Produksi: tabel kosong, isi via UI. Mencegah duplikat data saat redeploy.
+# 4) Migration. Seeding data demo HANYA saat APP_ENV != production.
+#    Data SISTEM (superadmin + master plan) WAJIB di-seed di SEMUA environment
+#    — tanpa superadmin, login panel superadmin selalu gagal. Seeder idempoten
+#    (firstOrCreate/updateOrCreate) sehingga aman dijalankan setiap start container.
 echo "[LaundryFlow] Menjalankan migration..."
 if [ "$APP_ENV" = "production" ] || [ -z "$APP_ENV" ]; then
-    # Produksi: migrate tanpa seed.
+    # Produksi: migrate + seed data SISTEM saja (superadmin + plan).
+    # Data demo (user/service/order contoh) dilewati.
     php artisan migrate --force
+    echo "[LaundryFlow] APP_ENV=${APP_ENV} → seeding data sistem (superadmin + plan)."
+    php artisan db:seed --class=SystemDataSeeder --force
 else
-    # Dev/staging: migrate + seed (akun demo, data contoh).
-    echo "[LaundryFlow] APP_ENV=${APP_ENV} → menjalankan seeder."
+    # Dev/staging: migrate + seed lengkap (akun demo, data contoh).
+    echo "[LaundryFlow] APP_ENV=${APP_ENV} → menjalankan seeder lengkap."
     php artisan migrate --force --seed
 fi
 
