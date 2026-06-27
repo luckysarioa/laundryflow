@@ -24,6 +24,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [loading, isAuthenticated, router]);
 
+  useEffect(() => {
+    if (!loading && isAuthenticated && user?.role === "superadmin") {
+      const width = window.innerWidth;
+      if (width > 768 && !window.location.pathname.startsWith("/desktop")) {
+        router.replace("/desktop/dashboard");
+      }
+    }
+  }, [loading, isAuthenticated, user, router]);
+
   if (loading || !isAuthenticated) {
     return <FullPageSpinner label="Memuat..." />;
   }
@@ -35,7 +44,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="max-w-md mx-auto flex items-center justify-between">
             <span className="text-xs text-amber-700 font-medium">Mode: Super Admin (Mobile)</span>
             <Link href="/desktop/dashboard" className="text-xs font-medium text-amber-700 hover:text-amber-800 underline">
-              Buka Desktop View
+              Desktop View
             </Link>
           </div>
         </div>
