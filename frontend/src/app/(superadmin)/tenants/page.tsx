@@ -172,7 +172,7 @@ export default function TenantsPage() {
             </thead>
             <tbody>
               {filteredTenants.map((tenant) => (
-                <tr key={tenant.id} className="border-b border-slate-100 hover:bg-slate-50">
+                <tr key={tenant.id} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer" onClick={() => window.location.href = `/superadmin/tenants/${tenant.id}`}>
                   <td className="px-4 py-3">
                     <div>
                       <p className="text-sm font-medium text-slate-800">{tenant.name}</p>

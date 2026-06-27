@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { href: "/superadmin", label: "Dashboard", icon: HomeIcon },
   { href: "/superadmin/tenants", label: "Tenants", icon: TenantIcon },
   { href: "/superadmin/subscriptions", label: "Subscriptions", icon: SubscriptionIcon },
+  { href: "/superadmin/invoices", label: "Invoices", icon: InvoiceIcon },
   { href: "/superadmin/revenue", label: "Revenue", icon: RevenueIcon },
   { href: "/superadmin/sa-users", label: "Admin Users", icon: UsersIcon },
   { href: "/superadmin/sa-activity-logs", label: "Activity Logs", icon: LogIcon },
@@ -59,11 +60,11 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             </div>
             <div className="flex items-center gap-4">
               <Link
-                href="/desktop/dashboard"
+                href="/superadmin/tenants"
                 className="flex items-center gap-2 px-3 py-1.5 bg-brand-50 text-brand-700 rounded-lg text-sm font-medium hover:bg-brand-100 transition"
               >
                 <StoreIcon />
-                Manage Tenant
+                Kelola Tenant
               </Link>
               <span className="text-sm text-slate-600">{user?.nama}</span>
               <button
@@ -184,6 +185,13 @@ function StoreIcon() {
     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 22V12h6v10" />
+    </svg>
+  );
+}
+function InvoiceIcon({ active }: { active: boolean }) {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" className={active ? "fill-brand-100" : ""} />
     </svg>
   );
 }

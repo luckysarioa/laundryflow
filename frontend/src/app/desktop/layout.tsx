@@ -47,13 +47,15 @@ export default function DesktopLayout({ children }: { children: React.ReactNode 
     if (!loading) {
       if (!isAuthenticated) {
         router.replace("/login?next=/desktop/dashboard");
-      } else if (user?.role !== "superadmin") {
+      } else if (user?.role === "superadmin") {
+        router.replace("/superadmin");
+      } else if (user?.role !== "pemilik" && user?.role !== "kasir") {
         router.replace("/dashboard");
       }
     }
   }, [loading, isAuthenticated, user, router]);
 
-  if (loading || !isAuthenticated || user?.role !== "superadmin") {
+  if (loading || !isAuthenticated || (user?.role !== "pemilik" && user?.role !== "kasir")) {
     return <FullPageSpinner label="Memuat..." />;
   }
 
@@ -68,7 +70,7 @@ export default function DesktopLayout({ children }: { children: React.ReactNode 
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-800 truncate">LaundryFlow</p>
-            <p className="text-[11px] text-slate-400">Tenant Management</p>
+            <p className="text-[11px] text-slate-400">Tenant Panel</p>
           </div>
         </div>
 
@@ -101,16 +103,7 @@ export default function DesktopLayout({ children }: { children: React.ReactNode 
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-slate-200 p-3 space-y-2">
-          <Link
-            href="/superadmin"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition"
-          >
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5 5-5M18 12H6" />
-            </svg>
-            Super Admin Panel
-          </Link>
+        <div className="border-t border-slate-200 p-3">
           <div className="flex items-center gap-3 px-3 py-2">
             <div className="h-8 w-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-xs font-semibold">
               {user?.nama?.charAt(0) ?? "?"}

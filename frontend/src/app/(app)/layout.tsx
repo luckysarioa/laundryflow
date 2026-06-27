@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { BottomNav } from "@/components/BottomNav";
 import { FullPageSpinner } from "@/components/ui/Spinner";
@@ -26,10 +25,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!loading && isAuthenticated && user?.role === "superadmin") {
-      const width = window.innerWidth;
-      if (width > 768 && !window.location.pathname.startsWith("/desktop")) {
-        router.replace("/desktop/dashboard");
-      }
+      router.replace("/superadmin");
     }
   }, [loading, isAuthenticated, user, router]);
 
@@ -39,16 +35,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {user?.role === "superadmin" && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2">
-          <div className="max-w-md mx-auto flex items-center justify-between">
-            <span className="text-xs text-amber-700 font-medium">Mode: Super Admin (Mobile)</span>
-            <Link href="/desktop/dashboard" className="text-xs font-medium text-amber-700 hover:text-amber-800 underline">
-              Desktop View
-            </Link>
-          </div>
-        </div>
-      )}
       <main className="flex-1 mx-auto w-full max-w-md px-4 pb-24 pt-4">
         {children}
       </main>
