@@ -131,12 +131,13 @@ services:
       dockerfile: Dockerfile
       args:
         # NEXT_PUBLIC_* dipanggang saat build. Dengan proxy /api (rewrites),
-        # API_URL cukup "/api" (relatif, same-origin) → tidak perlu domain backend publik.
-        # Alternatif 2-domain: set NEXT_PUBLIC_API_URL=https://api.domainanda.com/api
-        # dan biarkan BACKEND_URL kosong (proxy dilewati bila sama dgn origin — tidak terjadi).
+        # API_URL cukup "/api" (relatif, same-origin) → browser memanggil same-origin.
         NEXT_PUBLIC_USE_MOCK: ${NEXT_PUBLIC_USE_MOCK:-false}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
-        # Tujuan proxy /api/* (server-side, internal Docker). Default: service backend.
+        # Tujuan proxy /api/* (server-side). Jika frontend & backend beda jaringan
+        # (umum di Coolify multi-resource), pakai domain backend publik:
+        #   BACKEND_URL=https://backend.domainanda.com
+        # Default http://backend:80 hanya cocok bila satu compose/network.
         BACKEND_URL: ${BACKEND_URL:-http://backend:80}
     restart: unless-stopped
     depends_on:
