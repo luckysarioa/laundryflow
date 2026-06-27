@@ -6,8 +6,15 @@
 // network-first untuk data API (selalu ambil terbaru saat online).
 // ==========================================================
 
-const CACHE_VERSION = "laundryflow-v1";
-const APP_SHELL = ["/", "/login", "/manifest.json", "/icons/icon.svg"];
+const CACHE_VERSION = "laundryflow-v2";
+const APP_SHELL = [
+  "/",
+  "/login",
+  "/manifest.json",
+  "/icons/icon.svg",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
