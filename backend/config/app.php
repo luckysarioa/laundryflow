@@ -20,32 +20,11 @@ return [
         'driver' => 'file',
     ],
 
-    'providers' => [
-        Illuminate\Broadcasting\BroadcastServiceProvider::class,
-        Illuminate\Bus\BusServiceProvider::class,
-        Illuminate\Cache\CacheServiceProvider::class,
-        Illuminate\Foundation\Providers\ConsoleSupportServiceProvider::class,
-        Illuminate\Cookie\CookieServiceProvider::class,
-        Illuminate\Database\DatabaseServiceProvider::class,
-        Illuminate\Encryption\EncryptionServiceProvider::class,
-        Illuminate\Filesystem\FilesystemServiceProvider::class,
-        Illuminate\Foundation\Providers\FoundationServiceProvider::class,
-        Illuminate\Hashing\HashServiceProvider::class,
-        Illuminate\Mail\MailServiceProvider::class,
-        Illuminate\Notifications\NotificationServiceProvider::class,
-        Illuminate\Pagination\PaginationServiceProvider::class,
-        Illuminate\Pipeline\PipelineServiceProvider::class,
-        Illuminate\Queue\QueueServiceProvider::class,
-        Illuminate\Redis\RedisServiceProvider::class,
-        Illuminate\Auth\Passwords\PasswordResetServiceProvider::class,
-        Illuminate\Session\SessionServiceProvider::class,
-        Illuminate\Translation\TranslationServiceProvider::class,
-        Illuminate\Validation\ValidationServiceProvider::class,
-        Illuminate\View\ViewServiceProvider::class,
-        App\Providers\AppServiceProvider::class,
-        App\Providers\AuthServiceProvider::class,
-        // SanctumServiceProvider mendaftarkan diri via auto-discovery package.
-    ],
+    // Di Laravel 11, provider inti (Auth, Sanctum, dll) di-auto-load framework.
+    // Jangan override 'providers' di sini — itu akan MENGGANTI daftar default
+    // framework dan menyebabkan binding penting hilang (mis. 'auth' →
+    // "Target class [auth] does not exist" → semua route auth:sanctum 500).
+    // Provider aplikasi didaftarkan di bootstrap/providers.php.
 
     'aliases' => \Illuminate\Support\Facades\Facade::defaultAliases()->merge([])->toArray(),
 ];
