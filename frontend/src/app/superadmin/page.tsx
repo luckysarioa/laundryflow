@@ -1,14 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/Card";
-import { StatCard } from "@/components/StatCard";
+import Link from "next/link";
+import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui/Spinner";
-
-// ==========================================================
-// Super Admin Dashboard — ringkasan SaaS: total tenants,
-// revenue, subscriptions, dll.
-// ==========================================================
 
 interface SuperAdminStats {
   totalTenants: number;
@@ -19,7 +14,6 @@ interface SuperAdminStats {
   trialSubscriptions: number;
 }
 
-// Mock data untuk development
 const MOCK_STATS: SuperAdminStats = {
   totalTenants: 12,
   activeTenants: 10,
@@ -34,11 +28,16 @@ export default function SuperAdminDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setStats(MOCK_STATS);
-      setLoading(false);
-    }, 500);
+    (async () => {
+      try {
+        const data = await api.getSuperAdminStats();
+        setStats(data);
+      } catch {
+        setStats(MOCK_STATS);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   if (loading || !stats) {
@@ -51,118 +50,97 @@ export default function SuperAdminDashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-slate-800">Dashboard</h2>
-        <p className="text-sm text-slate-500">Overview of your SaaS platform</p>
+        <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
+        <p className="text-sm text-slate-500 mt-1">Ringkasan platform LaundryFlow</p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card padding="md">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Total Tenants</p>
-              <p className="text-2xl font-bold text-slate-800">{stats.totalTenants}</p>
-            </div>
-            <div className="h-12 w-12 rounded-xl bg-brand-50 flex items-center justify-center">
-              <TenantIcon />
-            </div>
-          </div>
-          <p className="mt-2 text-xs text-slate-400">{stats.activeTenants} active</p>
-        </Card>
-
-        <Card padding="md">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Monthly Revenue</p>
-              <p className="text-2xl font-bold text-slate-800">
-                Rp {stats.monthlyRevenue.toLocaleString("id-ID")}
-              </p>
-            </div>
-            <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center">
-              <RevenueIcon />
-            </div>
-          </div>
-          <p className="mt-2 text-xs text-slate-400">
-            Total: Rp {stats.totalRevenue.toLocaleString("id-ID")}
-          </p>
-        </Card>
-
-        <Card padding="md">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Subscriptions</p>
-              <p className="text-2xl font-bold text-slate-800">{stats.activeSubscriptions}</p>
-            </div>
-            <div className="h-12 w-12 rounded-xl bg-purple-50 flex items-center justify-center">
-              <SubscriptionIcon />
-            </div>
-          </div>
-          <p className="mt-2 text-xs text-slate-400">{stats.trialSubscriptions} in trial</p>
-        </Card>
+      <div className="grid grid-cols-3 gap-5">
+        <StatCard
+          label="Total Tenants"
+          value={String(stats.totalTenants)}
+          hint={`${stats.activeTenants} aktif`}
+          tone="brand"
+        />
+        <StatCard
+          label="Revenue Bulanan"
+          value={`Rp ${stats.monthlyRevenue.toLocaleString("id-ID")}`}
+          hint={`Total: Rp ${stats.totalRevenue.toLocaleString("id-ID")}`}
+          tone="emerald"
+        />
+        <StatCard
+          label="Subscriptions"
+          value={String(stats.activeSubscriptions)}
+          hint={`${stats.trialSubscriptions} trial`}
+          tone="purple"
+        />
       </div>
 
-      {/* Recent Tenants */}
-      <Card padding="md">
-        <h3 className="text-sm font-semibold text-slate-800 mb-4">Recent Tenants</h3>
-        <div className="space-y-3">
-          {[
-            { name: "Laundry Bersih", plan: "Pro", status: "active", revenue: 99000 },
-            { name: "Cuci Bersih", plan: "Enterprise", status: "active", revenue: 299000 },
-            { name: "Laundry Express", plan: "Pro", status: "trial", revenue: 0 },
-          ].map((tenant, i) => (
-            <div key={i} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
-              <div>
-                <p className="text-sm font-medium text-slate-800">{tenant.name}</p>
-                <p className="text-xs text-slate-400">{tenant.plan}</p>
-              </div>
-              <div className="text-right">
-                <span
-                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    tenant.status === "active"
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-amber-100 text-amber-700"
-                  }`}
-                >
-                  {tenant.status}
-                </span>
-                {tenant.revenue > 0 && (
-                  <p className="text-xs text-slate-500 mt-1">
-                    Rp {tenant.revenue.toLocaleString("id-ID")}/mo
-                  </p>
-                )}
-              </div>
+      {/* Quick Actions */}
+      <div className="grid grid-cols-3 gap-5">
+        <Link href="/superadmin/tenants" className="bg-white rounded-xl border border-slate-200 p-5 hover:border-brand-300 hover:shadow-sm transition group">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center group-hover:bg-brand-100 transition">
+              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                <rect x="14" y="14" width="7" height="7" rx="1.5" />
+              </svg>
             </div>
-          ))}
-        </div>
-      </Card>
+            <div>
+              <p className="text-sm font-semibold text-slate-800">Kelola Tenants</p>
+              <p className="text-xs text-slate-400 mt-0.5">Lihat & kelola semua laundry</p>
+            </div>
+          </div>
+        </Link>
+
+        <Link href="/superadmin/invoices" className="bg-white rounded-xl border border-slate-200 p-5 hover:border-brand-300 hover:shadow-sm transition group">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:bg-amber-100 transition">
+              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-800">Invoices</p>
+              <p className="text-xs text-slate-400 mt-0.5">Tagihan & pembayaran</p>
+            </div>
+          </div>
+        </Link>
+
+        <Link href="/superadmin/subscriptions" className="bg-white rounded-xl border border-slate-200 p-5 hover:border-brand-300 hover:shadow-sm transition group">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-purple-100 transition">
+              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <rect x="2" y="5" width="20" height="14" rx="2" />
+                <path strokeLinecap="round" d="M2 10h20" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-800">Subscriptions</p>
+              <p className="text-xs text-slate-400 mt-0.5">Kelola paket langganan</p>
+            </div>
+          </div>
+        </Link>
+      </div>
     </div>
   );
 }
 
-// ---- Icons ----
-function TenantIcon() {
+function StatCard({ label, value, hint, tone }: { label: string; value: string; hint: string; tone: string }) {
+  const tones: Record<string, string> = {
+    brand: "border-l-brand-500",
+    emerald: "border-l-emerald-500",
+    purple: "border-l-purple-500",
+  };
   return (
-    <svg className="h-6 w-6 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <rect x="3" y="3" width="7" height="7" rx="1.5" />
-      <rect x="14" y="3" width="7" height="7" rx="1.5" />
-      <rect x="3" y="14" width="7" height="7" rx="1.5" />
-      <rect x="14" y="14" width="7" height="7" rx="1.5" />
-    </svg>
-  );
-}
-function RevenueIcon() {
-  return (
-    <svg className="h-6 w-6 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 19h16M7 16V9m5 7V5m5 11v-6" />
-    </svg>
-  );
-}
-function SubscriptionIcon() {
-  return (
-    <svg className="h-6 w-6 text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <rect x="2" y="5" width="20" height="14" rx="2" />
-      <path strokeLinecap="round" d="M2 10h20" />
-    </svg>
+    <div className={`bg-white rounded-xl border border-slate-200 border-l-4 ${tones[tone]} p-5`}>
+      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
+      <p className="text-2xl font-bold text-slate-800 mt-1">{value}</p>
+      <p className="text-xs text-slate-400 mt-1">{hint}</p>
+    </div>
   );
 }

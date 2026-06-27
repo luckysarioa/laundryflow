@@ -83,9 +83,9 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex gap-6">
+        <div className="flex gap-8">
           {/* Sidebar */}
-          <aside className="w-64 shrink-0">
+          <aside className="w-56 shrink-0">
             <nav className="space-y-1">
               {NAV_ITEMS.map((item) => {
                 const active = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -93,7 +93,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition ${
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition outline-none ${
                       active
                         ? "bg-brand-50 text-brand-700"
                         : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
@@ -108,7 +108,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
           </aside>
 
           {/* Main content */}
-          <main className="flex-1 min-w-0">{children}</main>
+          <main className="flex-1 min-w-0 max-w-4xl">{children}</main>
         </div>
       </div>
     </div>
