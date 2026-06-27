@@ -118,6 +118,15 @@ Project ini **tidak punya reverse proxy internal** — Coolify routing 2 domain 
   build-time variable. Jadi tentukan domain API **sebelum** build pertama, dan rebuild
   bila domain berubah.
 
+> 💡 **Alternatif: proxy `/api/*` via frontend (RECOMMENDED — 1 domain saja).**
+> Daripada membuka domain backend publik + mengurus CORS, frontend Next.js mem-proxy
+> request `/api/*` ke backend internal (`http://backend:80`) lewat `rewrites()`
+> di `next.config.ts`. Browser cukup memanggil **same-origin** `/api/*` → tidak ada CORS,
+> tidak butuh domain backend publik. Cukup 1 domain (frontend).
+> - Default `NEXT_PUBLIC_API_URL=/api` + `BACKEND_URL=http://backend:80` (sudah diatur
+>   di `docker-compose.yml`) → tinggal deploy, tidak perlu konfigurasi tambahan.
+> - Tidak perlu expose domain backend ke internet (lebih aman).
+
 ### File deployment
 - `docker-compose.yml` — orkestrasi semua service (5 service, 2 volume)
 - `frontend/Dockerfile` — Next.js standalone (image ramping)

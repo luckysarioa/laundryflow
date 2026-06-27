@@ -21,10 +21,16 @@ COPY . .
 # ARG agar NEXT_PUBLIC_* bisa di-inject saat build (build-time variables).
 # DEFAULT: mode mock aktif. Saat deploy full-stack, override via build args
 # (lihat docker-compose.yml: args → NEXT_PUBLIC_USE_MOCK=false).
+# NEXT_PUBLIC_API_URL default "/api" (relatif) → browser memanggil same-origin,
+# lalu Next.js mem-proxy ke BACKEND_URL via rewrites() (lihat next.config.ts).
 ARG NEXT_PUBLIC_USE_MOCK=true
-ARG NEXT_PUBLIC_API_URL=http://localhost:8000/api
+ARG NEXT_PUBLIC_API_URL=/api
+# BACKEND_URL: tujuan proxy /api/* (server-side, di dalam jaringan Docker).
+# Dievaluasi saat build oleh rewrites() — bake nilai stabil: nama service backend.
+ARG BACKEND_URL=http://backend:80
 ENV NEXT_PUBLIC_USE_MOCK=${NEXT_PUBLIC_USE_MOCK}
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV BACKEND_URL=${BACKEND_URL}
 
 # Next.js telemetry nonaktif di CI/build.
 ENV NEXT_TELEMETRY_DISABLED=1
