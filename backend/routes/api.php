@@ -21,6 +21,10 @@ use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\SuperAdmin\TenantController;
 use App\Http\Controllers\Api\SuperAdmin\SubscriptionController as SuperAdminSubscriptionController;
 use App\Http\Controllers\Api\SuperAdmin\RevenueController;
+use App\Http\Controllers\Api\SuperAdmin\SystemSettingsController;
+use App\Http\Controllers\Api\SuperAdmin\SuperAdminUserController;
+use App\Http\Controllers\Api\SuperAdmin\SuperAdminActivityLogController;
+use App\Http\Controllers\Api\SuperAdmin\SuperAdminBackupController;
 use Illuminate\Support\Facades\Route;
 
 // ==========================================================
@@ -196,5 +200,25 @@ Route::middleware(['auth:sanctum', 'subscription'])->group(function () {
         Route::get('revenue/trend', [RevenueController::class, 'trend']);
         Route::get('revenue/by-plan', [RevenueController::class, 'byPlan']);
         Route::get('revenue/report', [RevenueController::class, 'report']);
+
+        // System Settings
+        Route::get('settings', [SystemSettingsController::class, 'index']);
+        Route::patch('settings', [SystemSettingsController::class, 'update']);
+
+        // Superadmin User Management
+        Route::get('users', [SuperAdminUserController::class, 'index']);
+        Route::post('users', [SuperAdminUserController::class, 'store']);
+        Route::patch('users/{user}', [SuperAdminUserController::class, 'update']);
+        Route::delete('users/{user}', [SuperAdminUserController::class, 'destroy']);
+
+        // Activity Logs (all tenants)
+        Route::get('activity-logs', [SuperAdminActivityLogController::class, 'index']);
+
+        // System Backups
+        Route::get('backups', [SuperAdminBackupController::class, 'index']);
+        Route::post('backups', [SuperAdminBackupController::class, 'store']);
+        Route::get('backups/{filename}/download', [SuperAdminBackupController::class, 'download']);
+        Route::post('backups/{filename}/restore', [SuperAdminBackupController::class, 'restore']);
+        Route::delete('backups/{filename}', [SuperAdminBackupController::class, 'destroy']);
     });
 });

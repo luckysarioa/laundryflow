@@ -825,4 +825,99 @@ export const api = {
     }
     return http("/superadmin/revenue/by-plan");
   },
+
+  // ----------------- SUPER ADMIN SETTINGS -----------------
+
+  async getSuperAdminSettings(): Promise<any> {
+    if (USE_MOCK) {
+      return {
+        platform_name: "LaundryFlow",
+        platform_email: "admin@laundryflow.id",
+        support_email: "support@laundryflow.id",
+        maintenance_mode: false,
+        registration_enabled: true,
+        default_trial_days: 7,
+        max_free_users: 1,
+        max_free_orders: 100,
+      };
+    }
+    return http("/superadmin/settings");
+  },
+
+  async updateSuperAdminSettings(data: Record<string, any>): Promise<any> {
+    if (USE_MOCK) return { message: "Settings updated." };
+    return http("/superadmin/settings", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  },
+
+  // ----------------- SUPER ADMIN USERS -----------------
+
+  async getSuperAdminUsers(): Promise<any[]> {
+    if (USE_MOCK) {
+      return [
+        { id: 1, nama: "Super Admin", email: "superadmin@laundryflow.id", role: "superadmin", created_at: "2024-01-01T00:00:00Z" },
+      ];
+    }
+    return http("/superadmin/users");
+  },
+
+  async createSuperAdminUser(input: { nama: string; email: string; password: string; password_confirmation: string }): Promise<any> {
+    if (USE_MOCK) return { message: "User created.", user: { id: Date.now(), ...input, role: "superadmin" } };
+    return http("/superadmin/users", { method: "POST", body: JSON.stringify(input) });
+  },
+
+  async updateSuperAdminUser(id: number, input: { nama?: string; email?: string; password?: string; password_confirmation?: string }): Promise<any> {
+    if (USE_MOCK) return { message: "User updated.", user: { id, ...input } };
+    return http(`/superadmin/users/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+  },
+
+  async deleteSuperAdminUser(id: number): Promise<any> {
+    if (USE_MOCK) return { message: "User deleted." };
+    return http(`/superadmin/users/${id}`, { method: "DELETE" });
+  },
+
+  // ----------------- SUPER ADMIN ACTIVITY LOGS -----------------
+
+  async getSuperAdminActivityLogs(params?: { type?: string; user_id?: number; search?: string; page?: number }): Promise<any> {
+    if (USE_MOCK) {
+      return { data: [], current_page: 1, last_page: 1, per_page: 50, total: 0 };
+    }
+    const searchParams = new URLSearchParams();
+    if (params?.type) searchParams.set("type", params.type);
+    if (params?.user_id) searchParams.set("user_id", String(params.user_id));
+    if (params?.search) searchParams.set("search", params.search);
+    if (params?.page) searchParams.set("page", String(params.page));
+    const qs = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return http(`/superadmin/activity-logs${qs}`);
+  },
+
+  // ----------------- SUPER ADMIN BACKUPS -----------------
+
+  async getSuperAdminBackups(): Promise<any[]> {
+    if (USE_MOCK) return [];
+    return http("/superadmin/backups");
+  },
+
+  async createSuperAdminBackup(): Promise<any> {
+    if (USE_MOCK) return { message: "Backup created.", backup: { name: "backup-mock.sql", size: 1024, date: new Date().toISOString() } };
+    return http("/superadmin/backups", { method: "POST" });
+  },
+
+  async restoreSuperAdminBackup(filename: string): Promise<any> {
+    if (USE_MOCK) return { message: "Database restored." };
+    return http(`/superadmin/backups/${filename}/restore`, { method: "POST" });
+  },
+
+  async deleteSuperAdminBackup(filename: string): Promise<any> {
+    if (USE_MOCK) return { message: "Backup deleted." };
+    return http(`/superadmin/backups/${filename}`, { method: "DELETE" });
+  },
+
+  getSuperAdminBackupDownloadUrl(filename: string): string {
+    if (USE_MOCK) return "#";
+    const token = getToken();
+    return `${API_URL}/superadmin/backups/${filename}/download${token ? `?token=${token}` : ""}`;
+  },
 };

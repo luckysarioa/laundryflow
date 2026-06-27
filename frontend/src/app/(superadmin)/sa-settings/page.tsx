@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { Spinner } from "@/components/ui/Spinner";
 
@@ -19,35 +20,31 @@ interface SystemSettings {
   max_free_orders: number;
 }
 
-// Mock data
-const MOCK_SETTINGS: SystemSettings = {
-  platform_name: "LaundryFlow",
-  platform_email: "admin@laundryflow.id",
-  support_email: "support@laundryflow.id",
-  maintenance_mode: false,
-  registration_enabled: true,
-  default_trial_days: 7,
-  max_free_users: 1,
-  max_free_orders: 100,
-};
-
 export default function SaSettingsPage() {
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
   useEffect(() => {
-    setTimeout(() => {
-      setSettings(MOCK_SETTINGS);
-      setLoading(false);
-    }, 500);
+    api.getSuperAdminSettings()
+      .then(setSettings)
+      .catch(() => setToast({ type: "error", msg: "Gagal memuat settings." }))
+      .finally(() => setLoading(false));
   }, []);
 
   const handleSave = async () => {
+    if (!settings) return;
     setSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setSaving(false);
-    alert("Settings saved!");
+    setToast(null);
+    try {
+      await api.updateSuperAdminSettings(settings);
+      setToast({ type: "success", msg: "Settings berhasil disimpan." });
+    } catch {
+      setToast({ type: "error", msg: "Gagal menyimpan settings." });
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading || !settings) {
@@ -63,22 +60,28 @@ export default function SaSettingsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">System Settings</h2>
-          <p className="text-sm text-slate-500">Configure your SaaS platform</p>
+          <p className="text-sm text-slate-500">Konfigurasi platform SaaS</p>
         </div>
         <button
           onClick={handleSave}
           disabled={saving}
           className="px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700 transition disabled:opacity-50"
         >
-          {saving ? "Saving..." : "Save Changes"}
+          {saving ? "Menyimpan..." : "Simpan"}
         </button>
       </div>
+
+      {toast && (
+        <div className={`px-4 py-3 rounded-lg text-sm font-medium ${toast.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+          {toast.msg}
+        </div>
+      )}
 
       <Card padding="md">
         <h3 className="text-sm font-semibold text-slate-800 mb-4">Platform</h3>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Platform Name</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Nama Platform</label>
             <input
               type="text"
               value={settings.platform_name}
@@ -87,7 +90,7 @@ export default function SaSettingsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Platform Email</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Email Platform</label>
             <input
               type="email"
               value={settings.platform_email}
@@ -96,7 +99,7 @@ export default function SaSettingsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Support Email</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Email Support</label>
             <input
               type="email"
               value={settings.support_email}
@@ -108,49 +111,37 @@ export default function SaSettingsPage() {
       </Card>
 
       <Card padding="md">
-        <h3 className="text-sm font-semibold text-slate-800 mb-4">Access Control</h3>
+        <h3 className="text-sm font-semibold text-slate-800 mb-4">Akses</h3>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-slate-700">Maintenance Mode</p>
-              <p className="text-xs text-slate-400">Disable access for all tenants</p>
+              <p className="text-xs text-slate-400">Nonaktifkan akses untuk semua tenant</p>
             </div>
             <button
               onClick={() => setSettings({ ...settings, maintenance_mode: !settings.maintenance_mode })}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                settings.maintenance_mode ? "bg-red-600" : "bg-slate-200"
-              }`}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${settings.maintenance_mode ? "bg-red-600" : "bg-slate-200"}`}
             >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                  settings.maintenance_mode ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${settings.maintenance_mode ? "translate-x-6" : "translate-x-1"}`} />
             </button>
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-700">Registration Enabled</p>
-              <p className="text-xs text-slate-400">Allow new tenants to register</p>
+              <p className="text-sm font-medium text-slate-700">Registrasi Aktif</p>
+              <p className="text-xs text-slate-400">Izinkan tenant baru mendaftar</p>
             </div>
             <button
               onClick={() => setSettings({ ...settings, registration_enabled: !settings.registration_enabled })}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                settings.registration_enabled ? "bg-emerald-600" : "bg-slate-200"
-              }`}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${settings.registration_enabled ? "bg-emerald-600" : "bg-slate-200"}`}
             >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                  settings.registration_enabled ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${settings.registration_enabled ? "translate-x-6" : "translate-x-1"}`} />
             </button>
           </div>
         </div>
       </Card>
 
       <Card padding="md">
-        <h3 className="text-sm font-semibold text-slate-800 mb-4">Free Plan Limits</h3>
+        <h3 className="text-sm font-semibold text-slate-800 mb-4">Batas Free Plan</h3>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Default Trial Days</label>
@@ -162,7 +153,7 @@ export default function SaSettingsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Max Free Users</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Max User Free</label>
             <input
               type="number"
               value={settings.max_free_users}
@@ -171,7 +162,7 @@ export default function SaSettingsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Max Free Orders/Month</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Max Order/Bulan (Free)</label>
             <input
               type="number"
               value={settings.max_free_orders}

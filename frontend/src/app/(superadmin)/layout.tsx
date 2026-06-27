@@ -17,6 +17,9 @@ const NAV_ITEMS = [
   { href: "/superadmin/tenants", label: "Tenants", icon: TenantIcon },
   { href: "/superadmin/subscriptions", label: "Subscriptions", icon: SubscriptionIcon },
   { href: "/superadmin/revenue", label: "Revenue", icon: RevenueIcon },
+  { href: "/superadmin/users", label: "Admin Users", icon: UsersIcon },
+  { href: "/superadmin/activity-logs", label: "Activity Logs", icon: LogIcon },
+  { href: "/superadmin/sa-backups", label: "Backups", icon: BackupIcon },
   { href: "/superadmin/sa-settings", label: "Settings", icon: SettingsIcon },
 ];
 
@@ -142,6 +145,30 @@ function SettingsIcon({ active }: { active: boolean }) {
     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <circle cx="12" cy="12" r="3" className={active ? "fill-brand-100" : ""} />
       <path strokeLinecap="round" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+    </svg>
+  );
+}
+function UsersIcon({ active }: { active: boolean }) {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" className={active ? "fill-brand-100" : ""} />
+      <path strokeLinecap="round" d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+function LogIcon({ active }: { active: boolean }) {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" className={active ? "fill-brand-100" : ""} />
+      <path strokeLinecap="round" d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+    </svg>
+  );
+}
+function BackupIcon({ active }: { active: boolean }) {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" className={active ? "fill-brand-100" : ""} />
     </svg>
   );
 }
