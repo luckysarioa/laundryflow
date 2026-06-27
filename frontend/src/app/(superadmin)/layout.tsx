@@ -18,7 +18,7 @@ const NAV_ITEMS = [
   { href: "/superadmin/subscriptions", label: "Subscriptions", icon: SubscriptionIcon },
   { href: "/superadmin/revenue", label: "Revenue", icon: RevenueIcon },
   { href: "/superadmin/users", label: "Admin Users", icon: UsersIcon },
-  { href: "/superadmin/activity-logs", label: "Activity Logs", icon: LogIcon },
+  { href: "/superadmin/sa-activity-logs", label: "Activity Logs", icon: LogIcon },
   { href: "/superadmin/sa-backups", label: "Backups", icon: BackupIcon },
   { href: "/superadmin/sa-settings", label: "Settings", icon: SettingsIcon },
 ];
