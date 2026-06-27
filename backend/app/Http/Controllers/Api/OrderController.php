@@ -102,10 +102,13 @@ class OrderController extends Controller
             ]);
 
             // Create notification for new order
+            // CATATAN: operator ?? tidak boleh di dalam interpolation "{$...}" — PHP parse error.
+            // Ekstrak ke variabel dulu (idiom yang benar).
+            $customerName = $order->customer?->nama ?? 'pelanggan';
             \App\Models\Notification::createForUser(
                 auth()->id(),
                 'Order Baru',
-                "Order #{$order->id} dari {$order->customer->nama ?? 'pelanggan'} telah dibuat.",
+                "Order #{$order->id} dari {$customerName} telah dibuat.",
                 'info',
                 "/orders/{$order->id}"
             );
