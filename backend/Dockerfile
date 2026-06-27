@@ -20,16 +20,28 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 # --- Install dependency (layer terpisah untuk caching) ---
-# CATATAN: composer.lock belum di-commit (generate di mesin lokal lalu commit).
-# Tanpa lockfile, build mengambil versi terbaru → non-reproducible.
-# Lihat backend/README.md bagian Setup cara generate composer.lock.
+# CATATAN: composer.lock belum di-commit. Untuk reproducibility & menghindari
+# transient failure GitHub CDN (codeload HTTP 400), generate lock sekali lalu commit.
+# Sambil belum ada lock, kita retry dist 3x, lalu fallback ke source (git clone)
+# yang bypass codeload.zip sepenuhnya.
 COPY composer.json composer.lock* ./
-# --no-dev untuk image production (tanpa dependency testing/dev).
-# --no-scripts: scripts dijalankan di entrypoint setelah env siap.
 # Ignore security advisories yang memblokir semua versi Laravel 11.x (known Packagist issue).
 RUN composer config --no-interaction policy.advisories.block false \
-    && composer install --no-dev --optimize-autoloader --no-interaction --no-scripts \
-    || composer install --optimize-autoloader --no-interaction --no-scripts
+    && set -e; success=0; \
+       for i in 1 2 3; do \
+         echo "[dist attempt $i]"; \
+         if composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --prefer-dist; then success=1; break; fi; \
+         echo "[dist attempt $i failed, retrying in 5s...]"; sleep 5; \
+       done; \
+       if [ "$success" != "1" ]; then \
+         echo "[dist exhausted, falling back to source (git clone)]"; \
+         for i in 1 2 3; do \
+           echo "[source attempt $i]"; \
+           if composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --prefer-source; then success=1; break; fi; \
+           echo "[source attempt $i failed, retrying in 5s...]"; sleep 5; \
+         done; \
+       fi; \
+       if [ "$success" != "1" ]; then echo "All composer install attempts failed"; exit 1; fi
 
 # --- Copy kode aplikasi ---
 COPY . .
