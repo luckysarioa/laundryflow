@@ -47,9 +47,11 @@ export function usePwaInstall(): PwaInstallState {
   const [isDismissed, setIsDismissed] = useState(false);
 
   // Deteksi iOS (untuk petunjuk manual Share → Add to Home Screen).
+  // iOS 13+ iPad melaporkan diri sebagai Mac, jadi perlu cek maxTouchPoints.
   const isIOS = typeof window !== "undefined" &&
     (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ||
+      (navigator.maxTouchPoints > 0 && /Macintosh/.test(navigator.userAgent) && "ontouchend" in window));
 
   useEffect(() => {
     // Cek apakah sudah dismissed sebelumnya.

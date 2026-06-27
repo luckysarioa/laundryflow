@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePwaInstall } from "@/hooks/usePwaInstall";
 
 // ==========================================================
@@ -15,26 +15,27 @@ import { usePwaInstall } from "@/hooks/usePwaInstall";
 // ==========================================================
 
 export function InstallPrompt() {
-  const { canInstall, isInstalled, isIOS, promptInstall, dismiss } = usePwaInstall();
+  const { canInstall, isInstalled, isIOS, promptInstall, dismiss, isDismissed } = usePwaInstall();
   const [installing, setInstalling] = useState(false);
   const [showIOSHint, setShowIOSHint] = useState(false);
 
-  // Sudah ter-install → tidak perlu banner.
-  if (isInstalled) return null;
+  // Gunakan useEffect untuk iOS hint agar aman di React 18
+  useEffect(() => {
+    if (isIOS && !isInstalled && !isDismissed && !showIOSHint) {
+      const timer = setTimeout(() => setShowIOSHint(true), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isIOS, isInstalled, isDismissed, showIOSHint]);
 
-  // iOS: tidak ada API install. Tampilkan petunjuk manual (sekali per session,
-  // tidak disimpan permanen agar bisa muncul lagi lain waktu).
-  if (isIOS && !showIOSHint) {
-    // Munculkan hint iOS setelah delay singkat hanya sekali.
-    setTimeout(() => setShowIOSHint(true), 1500);
-  }
+  // Sudah ter-install atau sudah dismiss → tidak perlu banner.
+  if (isInstalled || isDismissed) return null;
 
   async function handleInstall() {
     setInstalling(true);
     const result = await promptInstall();
     setInstalling(false);
     if (result === "accepted") {
-      dismiss(); // sembunyikan setelah install
+      dismiss();
     }
   }
 
