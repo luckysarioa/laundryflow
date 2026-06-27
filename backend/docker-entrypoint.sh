@@ -7,6 +7,22 @@ set -e
 
 echo "[LaundryFlow] Persiapan aplikasi Laravel..."
 
+# 0) Pastikan struktur storage/framework ada & writable.
+#    Ini WAJIB di runtime karena:
+#    - Volume 'backend_storage' hanya mount storage/app/public
+#    - Beberapa image/hapus container bisa menghapus folder framework
+#    - Tanpa storage/framework/views → Blade compiler throw
+#      "Please provide a valid cache path" → semua endpoint 500.
+mkdir -p \
+    storage/app/public \
+    storage/framework/cache/data \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/logs \
+    bootstrap/cache
+chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
+chmod -R 775 storage bootstrap/cache 2>/dev/null || true
+
 # 1) Pastikan .env ada. Coolify meng-inject env langsung ke container, tapi
 #    Laravel membaca file .env minimal (Dotenv TIDAK menimpa env container,
 #    jadi nilai dari Coolify tetap dipakai). Bila .env tidak ada, salin contoh.
