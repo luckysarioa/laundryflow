@@ -46,9 +46,9 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header */}
+      {/* Header — full width, menempel ke tepi */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-lg bg-brand-600 flex items-center justify-center">
@@ -83,7 +83,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="px-4 sm:px-6 lg:px-8 py-6">
         {/* Nav mobile/tablet — pill horizontal scroll, hanya di bawah lg */}
         <nav className="lg:hidden flex gap-2 overflow-x-auto pb-3 -mx-1 px-1 mb-2">
           {NAV_ITEMS.map((item) => {
@@ -104,7 +104,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
           })}
         </nav>
 
-        <div className="flex gap-8">
+        <div className="flex gap-6 lg:gap-8">
           {/* Sidebar — kartu dengan batas tegas, sticky supaya tidak ikut scroll */}
           <aside className="w-60 shrink-0 hidden lg:block">
             <nav className="space-y-1 sticky top-24 bg-white rounded-2xl border border-slate-200/70 shadow-sm p-3">
