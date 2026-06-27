@@ -13,7 +13,7 @@ import { NextResponse, type NextRequest } from "next/server";
 // /reports, /settings. Route publik: /, /login.
 // ==========================================================
 
-const PROTECTED_PREFIXES = ["/dashboard", "/orders", "/status", "/customers", "/reports", "/settings"];
+const PROTECTED_PREFIXES = ["/dashboard", "/orders", "/status", "/customers", "/reports", "/settings", "/desktop"];
 const SUPERADMIN_PREFIXES = ["/superadmin"];
 
 export function middleware(request: NextRequest) {

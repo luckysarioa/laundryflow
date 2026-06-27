@@ -59,7 +59,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             </div>
             <div className="flex items-center gap-4">
               <Link
-                href="/dashboard"
+                href="/desktop/dashboard"
                 className="flex items-center gap-2 px-3 py-1.5 bg-brand-50 text-brand-700 rounded-lg text-sm font-medium hover:bg-brand-100 transition"
               >
                 <StoreIcon />

@@ -33,9 +33,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {user?.role === "superadmin" && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2">
           <div className="max-w-md mx-auto flex items-center justify-between">
-            <span className="text-xs text-amber-700 font-medium">Mode: Super Admin</span>
-            <Link href="/superadmin" className="text-xs font-medium text-amber-700 hover:text-amber-800 underline">
-              Kembali ke Panel Admin
+            <span className="text-xs text-amber-700 font-medium">Mode: Super Admin (Mobile)</span>
+            <Link href="/desktop/dashboard" className="text-xs font-medium text-amber-700 hover:text-amber-800 underline">
+              Buka Desktop View
             </Link>
           </div>
         </div>
