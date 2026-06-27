@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui/Spinner";
+import { StatCard } from "@/components/StatCard";
+import { PageHeader } from "@/components/admin/PageHeader";
+import { formatRupiah } from "@/lib/format";
 
 interface SuperAdminStats {
   totalTenants: number;
@@ -50,97 +53,126 @@ export default function SuperAdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
-        <p className="text-sm text-slate-500 mt-1">Ringkasan platform LaundryFlow</p>
-      </div>
+      <PageHeader title="Dashboard" subtitle="Ringkasan platform LaundryFlow" />
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-3 gap-5">
+      {/* Stats Grid — lebar penuh, responsive 1/2/3 kolom */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         <StatCard
           label="Total Tenants"
           value={String(stats.totalTenants)}
           hint={`${stats.activeTenants} aktif`}
           tone="brand"
+          icon={<TenantIcon />}
         />
         <StatCard
           label="Revenue Bulanan"
-          value={`Rp ${stats.monthlyRevenue.toLocaleString("id-ID")}`}
-          hint={`Total: Rp ${stats.totalRevenue.toLocaleString("id-ID")}`}
+          value={formatRupiah(stats.monthlyRevenue)}
+          hint={`Total: ${formatRupiah(stats.totalRevenue)}`}
           tone="emerald"
+          icon={<RevenueIcon />}
         />
         <StatCard
           label="Subscriptions"
           value={String(stats.activeSubscriptions)}
           hint={`${stats.trialSubscriptions} trial`}
           tone="purple"
+          icon={<SubscriptionIcon />}
         />
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-3 gap-5">
-        <Link href="/superadmin/tenants" className="bg-white rounded-xl border border-slate-200 p-5 hover:border-brand-300 hover:shadow-sm transition group">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center group-hover:bg-brand-100 transition">
-              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <rect x="3" y="3" width="7" height="7" rx="1.5" />
-                <rect x="14" y="3" width="7" height="7" rx="1.5" />
-                <rect x="3" y="14" width="7" height="7" rx="1.5" />
-                <rect x="14" y="14" width="7" height="7" rx="1.5" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-800">Kelola Tenants</p>
-              <p className="text-xs text-slate-400 mt-0.5">Lihat & kelola semua laundry</p>
-            </div>
-          </div>
-        </Link>
-
-        <Link href="/superadmin/invoices" className="bg-white rounded-xl border border-slate-200 p-5 hover:border-brand-300 hover:shadow-sm transition group">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:bg-amber-100 transition">
-              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-800">Invoices</p>
-              <p className="text-xs text-slate-400 mt-0.5">Tagihan & pembayaran</p>
-            </div>
-          </div>
-        </Link>
-
-        <Link href="/superadmin/subscriptions" className="bg-white rounded-xl border border-slate-200 p-5 hover:border-brand-300 hover:shadow-sm transition group">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-purple-100 transition">
-              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <rect x="2" y="5" width="20" height="14" rx="2" />
-                <path strokeLinecap="round" d="M2 10h20" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-800">Subscriptions</p>
-              <p className="text-xs text-slate-400 mt-0.5">Kelola paket langganan</p>
-            </div>
-          </div>
-        </Link>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <QuickAction
+          href="/superadmin/tenants"
+          title="Kelola Tenants"
+          desc="Lihat & kelola semua laundry"
+          iconClass="bg-brand-50 text-brand-600 group-hover:bg-brand-100"
+          icon={<TenantIcon />}
+        />
+        <QuickAction
+          href="/superadmin/invoices"
+          title="Invoices"
+          desc="Tagihan & pembayaran"
+          iconClass="bg-amber-50 text-amber-600 group-hover:bg-amber-100"
+          icon={<InvoiceIcon />}
+        />
+        <QuickAction
+          href="/superadmin/subscriptions"
+          title="Subscriptions"
+          desc="Kelola paket langganan"
+          iconClass="bg-purple-50 text-purple-600 group-hover:bg-purple-100"
+          icon={<SubscriptionIcon />}
+        />
       </div>
     </div>
   );
 }
 
-function StatCard({ label, value, hint, tone }: { label: string; value: string; hint: string; tone: string }) {
-  const tones: Record<string, string> = {
-    brand: "border-l-brand-500",
-    emerald: "border-l-emerald-500",
-    purple: "border-l-purple-500",
-  };
+function QuickAction({
+  href,
+  title,
+  desc,
+  iconClass,
+  icon,
+}: {
+  href: string;
+  title: string;
+  desc: string;
+  iconClass: string;
+  icon: React.ReactNode;
+}) {
   return (
-    <div className={`bg-white rounded-xl border border-slate-200 border-l-4 ${tones[tone]} p-5`}>
-      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-      <p className="text-2xl font-bold text-slate-800 mt-1">{value}</p>
-      <p className="text-xs text-slate-400 mt-1">{hint}</p>
-    </div>
+    <Link
+      href={href}
+      className="bg-white rounded-2xl border border-slate-200/70 shadow-sm p-5 hover:border-brand-300 hover:shadow-md transition group"
+    >
+      <div className="flex items-center gap-4">
+        <div className={`h-12 w-12 rounded-xl flex items-center justify-center transition ${iconClass}`}>
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-800">{title}</p>
+          <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// ---- Icons (reusable, dipakai StatCard + QuickAction) ----
+function TenantIcon() {
+  return (
+    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+  );
+}
+function RevenueIcon() {
+  return (
+    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 19h16M7 16V9m5 7V5m5 11v-6" />
+    </svg>
+  );
+}
+function SubscriptionIcon() {
+  return (
+    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <path strokeLinecap="round" d="M2 10h20" />
+    </svg>
+  );
+}
+function InvoiceIcon() {
+  return (
+    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"
+      />
+    </svg>
   );
 }

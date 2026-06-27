@@ -5,7 +5,7 @@ import { HTMLAttributes } from "react";
 // ==========================================================
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-  color?: "slate" | "blue" | "purple" | "emerald" | "amber" | "red" | "cyan";
+  color?: "slate" | "blue" | "purple" | "emerald" | "amber" | "red" | "cyan" | "brand";
 }
 
 const colorClasses: Record<NonNullable<BadgeProps["color"]>, string> = {
@@ -16,6 +16,7 @@ const colorClasses: Record<NonNullable<BadgeProps["color"]>, string> = {
   amber: "bg-amber-100 text-amber-700",
   red: "bg-red-100 text-red-700",
   cyan: "bg-cyan-100 text-cyan-700",
+  brand: "bg-brand-50 text-brand-700",
 };
 
 export function Badge({ color = "slate", className = "", children, ...props }: BadgeProps) {

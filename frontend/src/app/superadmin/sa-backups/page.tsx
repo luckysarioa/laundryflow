@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Card } from "@/components/ui/Card";
 import { Spinner } from "@/components/ui/Spinner";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/admin/PageHeader";
+import { DataTable } from "@/components/admin/DataTable";
 
 // ==========================================================
 // System Backups — backup & restore database seluruh platform.
@@ -45,8 +48,8 @@ export default function SaBackupsPage() {
       const res = await api.createSuperAdminBackup();
       setToast({ type: "success", msg: res.message || "Backup berhasil dibuat." });
       loadBackups();
-    } catch (e: any) {
-      setToast({ type: "error", msg: e.message || "Gagal membuat backup." });
+    } catch (e) {
+      setToast({ type: "error", msg: e instanceof Error ? e.message : "Gagal membuat backup." });
     } finally {
       setCreating(false);
     }
@@ -59,8 +62,8 @@ export default function SaBackupsPage() {
     try {
       const res = await api.restoreSuperAdminBackup(name);
       setToast({ type: "success", msg: res.message || "Restore berhasil." });
-    } catch (e: any) {
-      setToast({ type: "error", msg: e.message || "Gagal restore." });
+    } catch (e) {
+      setToast({ type: "error", msg: e instanceof Error ? e.message : "Gagal restore." });
     } finally {
       setRestoring(null);
     }
@@ -73,8 +76,8 @@ export default function SaBackupsPage() {
       await api.deleteSuperAdminBackup(name);
       setToast({ type: "success", msg: "Backup dihapus." });
       loadBackups();
-    } catch (e: any) {
-      setToast({ type: "error", msg: e.message || "Gagal menghapus." });
+    } catch (e) {
+      setToast({ type: "error", msg: e instanceof Error ? e.message : "Gagal menghapus." });
     }
   };
 
@@ -85,67 +88,56 @@ export default function SaBackupsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">System Backups</h2>
-          <p className="text-sm text-slate-500">Backup & restore database seluruh platform</p>
-        </div>
-        <button
-          onClick={handleCreate}
-          disabled={creating}
-          className="px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700 transition disabled:opacity-50"
-        >
-          {creating ? "Membuat..." : "+ Backup Baru"}
-        </button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="System Backups"
+        subtitle="Backup & restore database seluruh platform"
+        action={<Button onClick={handleCreate} loading={creating}>+ Backup Baru</Button>}
+      />
 
       {toast && (
-        <div className={`px-4 py-3 rounded-lg text-sm font-medium ${toast.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+        <div className={`px-4 py-3 rounded-xl text-sm font-medium ${toast.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-red-50 text-red-700 border border-red-100"}`}>
           {toast.msg}
         </div>
       )}
 
-      <Card padding="md">
-        {loading ? (
-          <div className="flex justify-center py-8"><Spinner size={24} /></div>
-        ) : backups.length === 0 ? (
-          <p className="text-sm text-slate-500 text-center py-8">Belum ada backup.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100">
-                  <th className="text-left py-3 px-4 font-medium text-slate-600">Nama File</th>
-                  <th className="text-left py-3 px-4 font-medium text-slate-600">Ukuran</th>
-                  <th className="text-left py-3 px-4 font-medium text-slate-600">Tanggal</th>
-                  <th className="text-right py-3 px-4 font-medium text-slate-600">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {backups.map((b) => (
-                  <tr key={b.name} className="border-b border-slate-50 hover:bg-slate-50">
-                    <td className="py-3 px-4 font-mono text-xs text-slate-800">{b.name}</td>
-                    <td className="py-3 px-4 text-slate-600">{formatSize(b.size)}</td>
-                    <td className="py-3 px-4 text-slate-500">{new Date(b.date).toLocaleString("id-ID")}</td>
-                    <td className="py-3 px-4 text-right space-x-2">
-                      <button onClick={() => handleDownload(b.name)} className="text-brand-600 hover:text-brand-700 text-xs font-medium">Download</button>
-                      <button
-                        onClick={() => handleRestore(b.name)}
-                        disabled={restoring === b.name}
-                        className="text-amber-600 hover:text-amber-700 text-xs font-medium disabled:opacity-50"
-                      >
-                        {restoring === b.name ? "Restoring..." : "Restore"}
-                      </button>
-                      <button onClick={() => handleDelete(b.name)} className="text-red-600 hover:text-red-700 text-xs font-medium">Hapus</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+      {loading ? (
+        <div className="flex justify-center py-12"><Spinner size={28} /></div>
+      ) : backups.length === 0 ? (
+        <EmptyState title="Belum ada backup" description="Buat backup database pertama Anda." />
+      ) : (
+        <DataTable>
+          <DataTable.Head>
+            <DataTable.Th>Nama File</DataTable.Th>
+            <DataTable.Th>Ukuran</DataTable.Th>
+            <DataTable.Th>Tanggal</DataTable.Th>
+            <DataTable.Th align="right">Aksi</DataTable.Th>
+          </DataTable.Head>
+          <DataTable.Body>
+            {backups.map((b) => (
+              <DataTable.Tr key={b.name}>
+                <DataTable.Td><span className="font-mono text-xs text-slate-800">{b.name}</span></DataTable.Td>
+                <DataTable.Td><span className="text-slate-600">{formatSize(b.size)}</span></DataTable.Td>
+                <DataTable.Td><span className="text-slate-500">{new Date(b.date).toLocaleString("id-ID")}</span></DataTable.Td>
+                <DataTable.Td align="right">
+                  <div className="flex justify-end gap-3">
+                    <button onClick={() => handleDownload(b.name)} className="text-brand-600 hover:text-brand-700 text-xs font-medium">Download</button>
+                    <button
+                      onClick={() => handleRestore(b.name)}
+                      disabled={restoring === b.name}
+                      className="text-amber-600 hover:text-amber-700 text-xs font-medium disabled:opacity-50"
+                    >
+                      {restoring === b.name ? "Restoring..." : "Restore"}
+                    </button>
+                    <button onClick={() => handleDelete(b.name)} className="text-red-600 hover:text-red-700 text-xs font-medium">Hapus</button>
+                  </div>
+                </DataTable.Td>
+              </DataTable.Tr>
+            ))}
+          </DataTable.Body>
+        </DataTable>
+      )}
     </div>
   );
 }
+

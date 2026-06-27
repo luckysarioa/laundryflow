@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { Spinner } from "@/components/ui/Spinner";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/admin/PageHeader";
+import { DataTable } from "@/components/admin/DataTable";
 
 // ==========================================================
 // Superadmin Users — kelola akun superadmin.
@@ -53,7 +58,7 @@ export default function SuperAdminUsersPage() {
     setToast(null);
     try {
       if (editingUser) {
-        const payload: any = { nama: form.nama, email: form.email };
+        const payload: Record<string, string> = { nama: form.nama, email: form.email };
         if (form.password) {
           payload.password = form.password;
           payload.password_confirmation = form.password_confirmation;
@@ -66,8 +71,8 @@ export default function SuperAdminUsersPage() {
       }
       setShowForm(false);
       loadUsers();
-    } catch (e: any) {
-      setToast({ type: "error", msg: e.message || "Gagal menyimpan." });
+    } catch (e) {
+      setToast({ type: "error", msg: e instanceof Error ? e.message : "Gagal menyimpan." });
     } finally {
       setSaving(false);
     }
@@ -80,94 +85,69 @@ export default function SuperAdminUsersPage() {
       await api.deleteSuperAdminUser(u.id);
       setToast({ type: "success", msg: "User berhasil dihapus." });
       loadUsers();
-    } catch (e: any) {
-      setToast({ type: "error", msg: e.message || "Gagal menghapus." });
+    } catch (e) {
+      setToast({ type: "error", msg: e instanceof Error ? e.message : "Gagal menghapus." });
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">Superadmin Users</h2>
-          <p className="text-sm text-slate-500">Kelola akun superadmin</p>
-        </div>
-        <button onClick={openCreate} className="px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700 transition">
-          + Tambah User
-        </button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Superadmin Users"
+        subtitle="Kelola akun superadmin"
+        action={<Button onClick={openCreate}>+ Tambah User</Button>}
+      />
 
       {toast && (
-        <div className={`px-4 py-3 rounded-lg text-sm font-medium ${toast.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+        <div className={`px-4 py-3 rounded-xl text-sm font-medium ${toast.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-red-50 text-red-700 border border-red-100"}`}>
           {toast.msg}
         </div>
       )}
 
       {showForm && (
-        <Card padding="md">
+        <Card padding="lg">
           <h3 className="text-sm font-semibold text-slate-800 mb-4">{editingUser ? "Edit User" : "Tambah User Baru"}</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Nama</label>
-              <input type="text" value={form.nama} onChange={(e) => setForm({ ...form, nama: e.target.value })} className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Password {editingUser && "(kosongkan jika tidak diubah)"}</label>
-              <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Konfirmasi Password</label>
-              <input type="password" value={form.password_confirmation} onChange={(e) => setForm({ ...form, password_confirmation: e.target.value })} className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
-            </div>
-            <div className="flex gap-2">
-              <button onClick={handleSubmit} disabled={saving} className="px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700 transition disabled:opacity-50">
-                {saving ? "Menyimpan..." : "Simpan"}
-              </button>
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition">
-                Batal
-              </button>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input label="Nama" type="text" value={form.nama} onChange={(e) => setForm({ ...form, nama: e.target.value })} />
+            <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <Input label={editingUser ? "Password (kosongkan jika tidak diubah)" : "Password"} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+            <Input label="Konfirmasi Password" type="password" value={form.password_confirmation} onChange={(e) => setForm({ ...form, password_confirmation: e.target.value })} />
+          </div>
+          <div className="flex gap-2 mt-5">
+            <Button onClick={handleSubmit} loading={saving}>Simpan</Button>
+            <Button variant="outline" onClick={() => setShowForm(false)}>Batal</Button>
           </div>
         </Card>
       )}
 
-      <Card padding="md">
-        {loading ? (
-          <div className="flex justify-center py-8"><Spinner size={24} /></div>
-        ) : users.length === 0 ? (
-          <p className="text-sm text-slate-500 text-center py-8">Belum ada superadmin.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100">
-                  <th className="text-left py-3 px-4 font-medium text-slate-600">Nama</th>
-                  <th className="text-left py-3 px-4 font-medium text-slate-600">Email</th>
-                  <th className="text-left py-3 px-4 font-medium text-slate-600">Dibuat</th>
-                  <th className="text-right py-3 px-4 font-medium text-slate-600">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
-                  <tr key={u.id} className="border-b border-slate-50 hover:bg-slate-50">
-                    <td className="py-3 px-4 font-medium text-slate-800">{u.nama}</td>
-                    <td className="py-3 px-4 text-slate-600">{u.email}</td>
-                    <td className="py-3 px-4 text-slate-500">{new Date(u.created_at).toLocaleDateString("id-ID")}</td>
-                    <td className="py-3 px-4 text-right">
-                      <button onClick={() => openEdit(u)} className="text-brand-600 hover:text-brand-700 text-xs font-medium mr-3">Edit</button>
-                      <button onClick={() => handleDelete(u)} className="text-red-600 hover:text-red-700 text-xs font-medium">Hapus</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+      {loading ? (
+        <div className="flex justify-center py-12"><Spinner size={28} /></div>
+      ) : users.length === 0 ? (
+        <EmptyState title="Belum ada superadmin" description="Tambahkan akun superadmin pertama." />
+      ) : (
+        <DataTable>
+          <DataTable.Head>
+            <DataTable.Th>Nama</DataTable.Th>
+            <DataTable.Th>Email</DataTable.Th>
+            <DataTable.Th>Dibuat</DataTable.Th>
+            <DataTable.Th align="right">Aksi</DataTable.Th>
+          </DataTable.Head>
+          <DataTable.Body>
+            {users.map((u) => (
+              <DataTable.Tr key={u.id}>
+                <DataTable.Td><span className="font-medium text-slate-800">{u.nama}</span></DataTable.Td>
+                <DataTable.Td><span className="text-slate-600">{u.email}</span></DataTable.Td>
+                <DataTable.Td><span className="text-slate-500">{new Date(u.created_at).toLocaleDateString("id-ID")}</span></DataTable.Td>
+                <DataTable.Td align="right">
+                  <button onClick={() => openEdit(u)} className="text-brand-600 hover:text-brand-700 text-xs font-medium mr-3">Edit</button>
+                  <button onClick={() => handleDelete(u)} className="text-red-600 hover:text-red-700 text-xs font-medium">Hapus</button>
+                </DataTable.Td>
+              </DataTable.Tr>
+            ))}
+          </DataTable.Body>
+        </DataTable>
+      )}
     </div>
   );
 }
+

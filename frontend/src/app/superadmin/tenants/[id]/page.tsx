@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui/Spinner";
+import { Badge } from "@/components/ui/Badge";
+import { Select } from "@/components/ui/Select";
+import { PageHeader } from "@/components/admin/PageHeader";
+import { Card } from "@/components/ui/Card";
+import { formatRupiah } from "@/lib/format";
 
 interface TenantDetail {
   id: number;
@@ -38,16 +43,15 @@ const MOCK_TENANT: TenantDetail = {
   last_active: "2024-03-20T10:30:00Z",
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  active: "bg-emerald-100 text-emerald-700",
-  trial: "bg-amber-100 text-amber-700",
-  suspended: "bg-red-100 text-red-700",
-  cancelled: "bg-slate-100 text-slate-500",
+const STATUS_COLOR: Record<TenantDetail["status"], "emerald" | "amber" | "red" | "slate"> = {
+  active: "emerald",
+  trial: "amber",
+  suspended: "red",
+  cancelled: "slate",
 };
 
 export default function TenantDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const tenantId = params?.id as string;
   const [tenant, setTenant] = useState<TenantDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,115 +107,83 @@ export default function TenantDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <Link href="/superadmin/tenants" className="text-xs text-slate-400 hover:text-slate-600 mb-1 inline-block">
-            ← Kembali ke Daftar Tenant
-          </Link>
-          <h2 className="text-2xl font-bold text-slate-800">{tenant.name}</h2>
-          <p className="text-sm text-slate-500 mt-1">Detail informasi tenant</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[tenant.status]}`}>
-            {tenant.status}
-          </span>
-          <select
-            value={tenant.status}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            disabled={updating}
-            className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
-          >
-            <option value="active">Active</option>
-            <option value="trial">Trial</option>
-            <option value="suspended">Suspended</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-        </div>
-      </div>
+      <PageHeader
+        title={tenant.name}
+        subtitle="Detail informasi tenant"
+        action={
+          <div className="flex items-center gap-2">
+            <Badge color={STATUS_COLOR[tenant.status]}>{tenant.status}</Badge>
+            <div className="w-40">
+              <Select
+                value={tenant.status}
+                onChange={(e) => handleStatusChange(e.target.value)}
+                disabled={updating}
+              >
+                <option value="active">Active</option>
+                <option value="trial">Trial</option>
+                <option value="suspended">Suspended</option>
+                <option value="cancelled">Cancelled</option>
+              </Select>
+            </div>
+          </div>
+        }
+      />
 
-      {/* Info Cards */}
-      <div className="grid grid-cols-4 gap-4">
-        <InfoCard label="Total Order" value={tenant.orders_count.toLocaleString()} />
-        <InfoCard label="Total Pelanggan" value={tenant.total_customers.toLocaleString()} />
+      {/* Info Cards — responsive 2/4 kolom */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <InfoCard label="Total Order" value={tenant.orders_count.toLocaleString("id-ID")} />
+        <InfoCard label="Total Pelanggan" value={tenant.total_customers.toLocaleString("id-ID")} />
         <InfoCard label="Users" value={String(tenant.total_users)} />
-        <InfoCard label="Revenue/Bulan" value={tenant.revenue > 0 ? `Rp ${tenant.revenue.toLocaleString("id-ID")}` : "-"} />
+        <InfoCard label="Revenue/Bulan" value={tenant.revenue > 0 ? formatRupiah(tenant.revenue) : "-"} />
       </div>
 
-      {/* Detail Info */}
-      <div className="grid grid-cols-2 gap-6">
+      {/* Detail Info — responsive 1/2 kolom */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Tenant Info */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <Card padding="lg">
           <h3 className="text-sm font-semibold text-slate-800 mb-4">Informasi Tenant</h3>
           <dl className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Nama Usaha</dt>
-              <dd className="text-slate-800 font-medium">{tenant.name}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Pemilik</dt>
-              <dd className="text-slate-800 font-medium">{tenant.owner_name}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Email</dt>
-              <dd className="text-slate-800 font-medium">{tenant.email}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Telepon</dt>
-              <dd className="text-slate-800 font-medium">{tenant.phone}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Paket</dt>
-              <dd className="text-slate-800 font-medium">{tenant.plan}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Terdaftar</dt>
-              <dd className="text-slate-800 font-medium">{new Date(tenant.created_at).toLocaleDateString("id-ID")}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Terakhir Aktif</dt>
-              <dd className="text-slate-800 font-medium">{new Date(tenant.last_active).toLocaleString("id-ID")}</dd>
-            </div>
+            <InfoRow label="Nama Usaha" value={tenant.name} />
+            <InfoRow label="Pemilik" value={tenant.owner_name} />
+            <InfoRow label="Email" value={tenant.email} />
+            <InfoRow label="Telepon" value={tenant.phone} />
+            <InfoRow label="Paket" value={tenant.plan} />
+            <InfoRow label="Terdaftar" value={new Date(tenant.created_at).toLocaleDateString("id-ID")} />
+            <InfoRow label="Terakhir Aktif" value={new Date(tenant.last_active).toLocaleString("id-ID")} />
           </dl>
-        </div>
+        </Card>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <Card padding="lg">
           <h3 className="text-sm font-semibold text-slate-800 mb-4">Aksi Cepat</h3>
           <div className="space-y-3">
-            <button
+            <QuickActionRow
               onClick={() => window.open(`/desktop/dashboard`, "_blank")}
-              className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:border-brand-200 hover:bg-brand-50/30 transition text-left"
-            >
-              <div className="h-10 w-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+              iconClass="bg-blue-100 text-blue-600"
+              icon={
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path strokeLinecap="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-800">Lihat Dashboard Tenant</p>
-                <p className="text-xs text-slate-400">Buka panel tenant di tab baru</p>
-              </div>
-            </button>
+              }
+              title="Lihat Dashboard Tenant"
+              desc="Buka panel tenant di tab baru"
+            />
 
-            <button
+            <QuickActionRow
               onClick={() => {
                 navigator.clipboard.writeText(`https://laundryflow.pixelmeliva.id/login?tenant=${tenant.id}`);
                 alert("Link login tenant sudah di-copy!");
               }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:border-brand-200 hover:bg-brand-50/30 transition text-left"
-            >
-              <div className="h-10 w-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+              iconClass="bg-emerald-100 text-emerald-600"
+              icon={
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                 </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-800">Copy Link Login</p>
-                <p className="text-xs text-slate-400">Bagikan link login ke tenant</p>
-              </div>
-            </button>
+              }
+              title="Copy Link Login"
+              desc="Bagikan link login ke tenant"
+            />
 
             <a
               href={`https://wa.me/${tenant.phone.replace(/^0/, "62")}`}
@@ -230,7 +202,7 @@ export default function TenantDetailPage() {
               </div>
             </a>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );
@@ -238,9 +210,45 @@ export default function TenantDetailPage() {
 
 function InfoCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5">
+    <div className="bg-white rounded-2xl border border-slate-200/70 shadow-sm p-5">
       <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
       <p className="text-2xl font-bold text-slate-800 mt-1">{value}</p>
     </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <dt className="text-slate-500 shrink-0">{label}</dt>
+      <dd className="text-slate-800 font-medium text-right">{value}</dd>
+    </div>
+  );
+}
+
+function QuickActionRow({
+  onClick,
+  iconClass,
+  icon,
+  title,
+  desc,
+}: {
+  onClick: () => void;
+  iconClass: string;
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:border-brand-200 hover:bg-brand-50/30 transition text-left"
+    >
+      <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${iconClass}`}>{icon}</div>
+      <div>
+        <p className="text-sm font-medium text-slate-800">{title}</p>
+        <p className="text-xs text-slate-400">{desc}</p>
+      </div>
+    </button>
   );
 }

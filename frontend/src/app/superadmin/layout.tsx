@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { FullPageSpinner } from "@/components/ui/Spinner";
+import { Button } from "@/components/ui/Button";
 
 // ==========================================================
 // Layout grup (superadmin) — shell aplikasi untuk pemilik SaaS.
@@ -27,7 +28,7 @@ const NAV_ITEMS = [
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, loading, isAuthenticated, logout } = useAuth();
 
   useEffect(() => {
     if (!loading) {
@@ -58,22 +59,22 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                 <p className="text-xs text-slate-400">Super Admin Panel</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <Link
-                href="/superadmin/tenants"
-                className="flex items-center gap-2 px-3 py-1.5 bg-brand-50 text-brand-700 rounded-lg text-sm font-medium hover:bg-brand-100 transition"
+            <div className="flex items-center gap-3">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => router.push("/superadmin/tenants")}
               >
                 <StoreIcon />
                 Kelola Tenant
-              </Link>
-              <span className="text-sm text-slate-600">{user?.nama}</span>
+              </Button>
+              <span className="text-sm text-slate-600 hidden sm:inline">{user?.nama}</span>
               <button
                 onClick={() => {
-                  localStorage.removeItem("laundryflow_session");
-                  document.cookie = "laundryflow_authed=; path=/; max-age=0";
+                  logout();
                   router.replace("/login");
                 }}
-                className="text-sm text-slate-500 hover:text-slate-700"
+                className="text-sm text-slate-500 hover:text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition"
               >
                 Logout
               </button>
@@ -84,9 +85,9 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex gap-8">
-          {/* Sidebar */}
+          {/* Sidebar — sticky supaya tidak ikut scroll konten panjang */}
           <aside className="w-56 shrink-0">
-            <nav className="space-y-1">
+            <nav className="space-y-1 sticky top-24">
               {NAV_ITEMS.map((item) => {
                 const active = pathname === item.href || pathname.startsWith(item.href + "/");
                 return (
@@ -107,8 +108,8 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             </nav>
           </aside>
 
-          {/* Main content */}
-          <main className="flex-1 min-w-0 max-w-4xl">{children}</main>
+          {/* Main content — lepas batas max-w-4xl, isi penuh sisa ruang */}
+          <main className="flex-1 min-w-0">{children}</main>
         </div>
       </div>
     </div>
