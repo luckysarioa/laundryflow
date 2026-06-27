@@ -22,6 +22,10 @@ mkdir -p \
     bootstrap/cache
 chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
 chmod -R 775 storage bootstrap/cache 2>/dev/null || true
+# Pastikan file log yang mungkin sudah ada (owned root dari shell exec) juga www-data writable.
+touch storage/logs/laravel.log
+chown www-data:www-data storage/logs/laravel.log 2>/dev/null || true
+chmod 664 storage/logs/laravel.log 2>/dev/null || true
 
 # 1) Pastikan .env ada. Coolify meng-inject env langsung ke container, tapi
 #    Laravel membaca file .env minimal (Dotenv TIDAK menimpa env container,
