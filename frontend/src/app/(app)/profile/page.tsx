@@ -57,8 +57,8 @@ export default function ProfilePage() {
               <Input label="Nama" value={nama} onChange={(e) => setNama(e.target.value)} required />
               <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
               <div className="flex items-center gap-2 text-xs text-slate-500">
-                <span className={`h-2 w-2 rounded-full ${user?.role === "pemilik" ? "bg-purple-500" : "bg-blue-500"}`}></span>
-                {user?.role === "pemilik" ? "Pemilik" : "Kasir"}
+                <span className={`h-2 w-2 rounded-full ${user?.role === "superadmin" ? "bg-amber-500" : user?.role === "pemilik" ? "bg-purple-500" : "bg-blue-500"}`}></span>
+                {user?.role === "superadmin" ? "Super Admin" : user?.role === "pemilik" ? "Pemilik" : "Kasir"}
               </div>
             </div>
             <div className="mt-4"><Button type="submit" fullWidth loading={loading}>Simpan Profil</Button></div>

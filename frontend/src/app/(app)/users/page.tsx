@@ -50,7 +50,7 @@ export default function UsersPage() {
                   <p className="text-[11px] text-slate-400 truncate">{u.email}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge color={u.role === "pemilik" ? "purple" : "blue"}>{u.role === "pemilik" ? "Pemilik" : "Kasir"}</Badge>
+                  <Badge color={u.role === "superadmin" ? "yellow" : u.role === "pemilik" ? "purple" : "blue"}>{u.role === "superadmin" ? "Super Admin" : u.role === "pemilik" ? "Pemilik" : "Kasir"}</Badge>
                   <button onClick={() => handleDelete(u)} className="h-7 w-7 flex items-center justify-center rounded text-red-400 hover:bg-red-50"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg></button>
                 </div>
               </div>

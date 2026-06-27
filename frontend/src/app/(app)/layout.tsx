@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { BottomNav } from "@/components/BottomNav";
 import { FullPageSpinner } from "@/components/ui/Spinner";
@@ -15,7 +16,7 @@ import { FullPageSpinner } from "@/components/ui/Spinner";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { isAuthenticated, loading } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -29,6 +30,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {user?.role === "superadmin" && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2">
+          <div className="max-w-md mx-auto flex items-center justify-between">
+            <span className="text-xs text-amber-700 font-medium">Mode: Super Admin</span>
+            <Link href="/superadmin" className="text-xs font-medium text-amber-700 hover:text-amber-800 underline">
+              Kembali ke Panel Admin
+            </Link>
+          </div>
+        </div>
+      )}
       <main className="flex-1 mx-auto w-full max-w-md px-4 pb-24 pt-4">
         {children}
       </main>

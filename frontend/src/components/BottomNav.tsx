@@ -14,7 +14,7 @@ import { ROLES } from "@/lib/constants";
 export function BottomNav() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const isPemilik = user?.role === "pemilik";
+  const isPemilik = user?.role === "pemilik" || user?.role === "superadmin";
 
   const trailing = isPemilik
     ? { href: "/reports", label: "Laporan", Icon: ChartIcon }

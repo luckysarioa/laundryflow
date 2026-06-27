@@ -17,7 +17,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const toast = useToast();
-  const isPemilik = user?.role === "pemilik";
+  const isAdmin = user?.role === "pemilik" || user?.role === "superadmin";
 
   function handleLogout() {
     logout();
@@ -69,7 +69,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* Admin Menu (pemilik only) */}
-        {isPemilik && (
+        {isAdmin && (
           <Card>
             <h3 className="text-sm font-semibold text-slate-800 mb-3">Admin</h3>
 
