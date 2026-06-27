@@ -84,10 +84,30 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Nav mobile/tablet — pill horizontal scroll, hanya di bawah lg */}
+        <nav className="lg:hidden flex gap-2 overflow-x-auto pb-3 -mx-1 px-1 mb-2">
+          {NAV_ITEMS.map((item) => {
+            const active = pathname === item.href || pathname.startsWith(item.href + "/");
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                  active
+                    ? "bg-brand-600 text-white"
+                    : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
         <div className="flex gap-8">
-          {/* Sidebar — sticky supaya tidak ikut scroll konten panjang */}
-          <aside className="w-56 shrink-0">
-            <nav className="space-y-1 sticky top-24">
+          {/* Sidebar — kartu dengan batas tegas, sticky supaya tidak ikut scroll */}
+          <aside className="w-60 shrink-0 hidden lg:block">
+            <nav className="space-y-1 sticky top-24 bg-white rounded-2xl border border-slate-200/70 shadow-sm p-3">
               {NAV_ITEMS.map((item) => {
                 const active = pathname === item.href || pathname.startsWith(item.href + "/");
                 return (
