@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Carbon\Carbon;
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -26,5 +27,13 @@ class AppServiceProvider extends ServiceProvider
         // Set locale Carbon agar translatedFormat() (mis. label bulan pada grafik)
         // menggunakan Bahasa Indonesia.
         Carbon::setLocale($this->app->getLocale());
+
+        // Hapus wrapping "data" pada response API Resource.
+        // Default Laravel membungkus: OrderResource::collection() -> {"data":[...]}.
+        // Frontend LaundryFlow mengharapkan PLAIN ARRAY ([...]) sesuai kontrak API
+        // (api.ts: Promise<Order[]>). Tanpa ini, frontend crash saat .filter()/.map()
+        // pada object {data:[...]} (bukan array) — "client-side exception".
+        // Berlaku global untuk SEMUA Resource (orders, customers, services, dll).
+        JsonResource::withoutWrapping();
     }
 }
