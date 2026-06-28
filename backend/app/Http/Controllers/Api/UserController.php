@@ -34,10 +34,11 @@ class UserController extends Controller
             'outlet_id' => ['nullable', 'exists:outlets,id'],
         ]);
 
+        // Assign PLAINTEXT — rely on User cast 'password' => 'hashed' (single hash).
         $user = User::create([
             'nama' => $data['nama'],
             'email' => $data['email'],
-            'password' => Hash::make($data['password']),
+            'password' => $data['password'],
             'role' => $data['role'],
             'outlet_id' => $data['outlet_id'] ?? null,
         ]);
@@ -113,8 +114,9 @@ class UserController extends Controller
             'password' => ['required', 'string', 'min:6', 'confirmed'],
         ]);
 
+        // Assign PLAINTEXT — rely on User cast 'password' => 'hashed' (single hash).
         $request->user()->update([
-            'password' => Hash::make($request->password),
+            'password' => $request->password,
         ]);
 
         return response()->json(['message' => 'Password berhasil diubah.']);
@@ -171,7 +173,8 @@ class UserController extends Controller
         }
 
         $user = User::where('email', $request->email)->first();
-        $user->update(['password' => Hash::make($request->password)]);
+        // Assign PLAINTEXT — rely on User cast 'password' => 'hashed' (single hash).
+        $user->update(['password' => $request->password]);
 
         \DB::table('password_reset_tokens')->where('email', $request->email)->delete();
 

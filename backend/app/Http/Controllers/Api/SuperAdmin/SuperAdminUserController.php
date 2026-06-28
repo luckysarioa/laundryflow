@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 class SuperAdminUserController extends Controller
 {
@@ -34,10 +33,12 @@ class SuperAdminUserController extends Controller
             'password' => 'required|string|min:6|confirmed',
         ]);
 
+        // Assign PLAINTEXT — rely on User cast 'password' => 'hashed' (single hash).
+        // Hash::make() here would double-hash and make the account unloginable.
         $user = User::create([
             'nama' => $validated['nama'],
             'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
+            'password' => $validated['password'],
             'role' => 'superadmin',
         ]);
 
@@ -62,8 +63,9 @@ class SuperAdminUserController extends Controller
             'password' => 'sometimes|string|min:6|confirmed',
         ]);
 
+        // Assign PLAINTEXT — rely on User cast 'password' => 'hashed' (single hash).
         if (isset($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
+            // biarkan apa adanya; cast User akan hash sekali.
         } else {
             unset($validated['password']);
         }

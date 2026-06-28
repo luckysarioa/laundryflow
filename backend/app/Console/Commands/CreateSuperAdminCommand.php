@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Models\User;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Hash;
 
 /**
  * Membuat atau memperbarui akun superadmin.
@@ -14,6 +13,10 @@ use Illuminate\Support\Facades\Hash;
  * gagal — kredensial salah" yang terjadi karena user belum pernah dibuat.
  *
  * Idempoten: bila email sudah ada, hanya password & role yang diperbarui.
+ *
+ * Catatan password: assign PLAINTEXT — model User punya cast 'password'
+ * => 'hashed' yang akan meng-hash SATU kali otomatis. JANGAN Hash::make()
+ * di sini (menyebabkan double-hash → login gagal).
  *
  * Contoh:
  *   php artisan app:create-superadmin
@@ -40,7 +43,7 @@ class CreateSuperAdminCommand extends Command
             ['email' => $email],
             [
                 'nama' => $name,
-                'password' => Hash::make($password),
+                'password' => $password,
                 'role' => 'superadmin',
             ]
         );
