@@ -298,7 +298,7 @@ class TenantController extends Controller
                 continue;
             }
 
-            $amount = $subscription->amount ?? $subscription->plan?->price_monthly ?? 0;
+            $amount = $subscription->amount ?: ($subscription->plan?->price_monthly ?? 0);
             $generated[] = Invoice::create([
                 'tenant_id' => $tenant->id,
                 'subscription_id' => $subscription->id,
