@@ -2,69 +2,194 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
+import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/Toast";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { DataTable } from "@/components/admin/DataTable";
 import { formatRupiah } from "@/lib/format";
 
 // ==========================================================
-// Tenants Management — kelola semua laundry businesses.
+// Tenants Management — kelola semua bisnis laundry.
 // ==========================================================
+
+type SubStatus = "active" | "trial" | "suspended" | "cancelled" | "expired" | "past_due";
 
 interface Tenant {
   id: number;
-  name: string;
-  owner_name: string;
+  nama: string;
   email: string;
-  phone: string;
-  plan: string;
-  status: "active" | "trial" | "suspended" | "cancelled";
-  created_at: string;
-  orders_count: number;
-  revenue: number;
+  role: string;
+  outlet?: { name?: string; phone?: string } | null;
+  subscription?: {
+    status: SubStatus;
+    amount?: number;
+    plan?: { label?: string; name?: string } | null;
+  } | null;
+  created_at?: string;
+  orders_count?: number;
 }
 
-// Mock data
-const MOCK_TENANTS: Tenant[] = [
-  { id: 1, name: "Laundry Bersih", owner_name: "Budi Santoso", email: "budi@laundrybersih.com", phone: "081234567890", plan: "Pro", status: "active", created_at: "2024-01-15", orders_count: 1250, revenue: 99000 },
-  { id: 2, name: "Cuci Bersih", owner_name: "Andi Wijaya", email: "andi@cucibersih.com", phone: "081234567891", plan: "Enterprise", status: "active", created_at: "2024-02-20", orders_count: 3200, revenue: 299000 },
-  { id: 3, name: "Laundry Express", owner_name: "Sari Dewi", email: "sari@laundryexpress.com", phone: "081234567892", plan: "Pro", status: "trial", created_at: "2024-03-10", orders_count: 45, revenue: 0 },
-  { id: 4, name: "Clean Master", owner_name: "Rizki Pratama", email: "rizki@cleanmaster.com", phone: "081234567893", plan: "Free", status: "active", created_at: "2024-03-25", orders_count: 89, revenue: 0 },
-  { id: 5, name: "Laundry Kilat", owner_name: "Maya Putri", email: "maya@laundrykilat.com", phone: "081234567894", plan: "Pro", status: "suspended", created_at: "2024-01-05", orders_count: 567, revenue: 99000 },
-];
-
-const STATUS_COLOR: Record<Tenant["status"], "emerald" | "amber" | "red" | "slate"> = {
+const STATUS_COLOR: Record<string, "emerald" | "amber" | "red" | "slate"> = {
   active: "emerald",
   trial: "amber",
   suspended: "red",
   cancelled: "slate",
+  expired: "slate",
+  past_due: "amber",
 };
+
+const PLAN_DEFAULT = [
+  { id: 1, name: "free", label: "Free", price_monthly: 0 },
+  { id: 2, name: "pro", label: "Pro", price_monthly: 99000 },
+  { id: 3, name: "enterprise", label: "Enterprise", price_monthly: 299000 },
+];
 
 export default function TenantsPage() {
   const router = useRouter();
+  const toast = useToast();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [plans, setPlans] = useState(PLAN_DEFAULT);
+
+  // Modal form (create / edit)
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Tenant | null>(null);
+  const [form, setForm] = useState({
+    nama: "",
+    email: "",
+    phone: "",
+    password: "",
+    password_confirmation: "",
+    plan_id: 2,
+  });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setTimeout(() => {
-      setTenants(MOCK_TENANTS);
-      setLoading(false);
-    }, 500);
+    loadTenants();
+    loadPlans();
   }, []);
 
+  async function loadTenants() {
+    try {
+      const res = await api.getTenants();
+      setTenants(res.data ?? []);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal memuat tenant");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadPlans() {
+    try {
+      const res = await api.getSuperAdminPlans();
+      if (Array.isArray(res) && res.length) {
+        setPlans(res.map((p: any) => ({ id: p.id, name: p.name, label: p.label, price_monthly: p.price_monthly })));
+      }
+    } catch {
+      // fallback ke plan default
+    }
+  }
+
+  function openCreate() {
+    setEditing(null);
+    setForm({ nama: "", email: "", phone: "", password: "", password_confirmation: "", plan_id: plans[1]?.id ?? 2 });
+    setModalOpen(true);
+  }
+
+  function openEdit(t: Tenant) {
+    setEditing(t);
+    setForm({
+      nama: t.nama,
+      email: t.email,
+      phone: t.outlet?.phone ?? "",
+      password: "",
+      password_confirmation: "",
+      plan_id: findPlanId(t.subscription?.plan?.name),
+    });
+    setModalOpen(true);
+  }
+
+  function findPlanId(planName?: string): number {
+    const match = plans.find((p) => p.name === planName);
+    return match?.id ?? plans[1]?.id ?? 2;
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      if (editing) {
+        await api.updateTenant(editing.id, {
+          nama: form.nama,
+          email: form.email,
+          phone: form.phone || undefined,
+          plan_id: form.plan_id,
+        });
+        toast.success("Tenant diperbarui");
+      } else {
+        if (form.password.length < 6) {
+          toast.error("Password minimal 6 karakter");
+          setSaving(false);
+          return;
+        }
+        await api.createTenant({
+          nama: form.nama,
+          email: form.email,
+          phone: form.phone || undefined,
+          plan_id: form.plan_id,
+          password: form.password,
+          password_confirmation: form.password_confirmation,
+          status: "trial",
+        });
+        toast.success("Tenant dibuat");
+      }
+      setModalOpen(false);
+      loadTenants();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menyimpan tenant");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(t: Tenant) {
+    if (!confirm(`Hapus tenant "${t.nama}"? Tindakan ini tidak dapat dibatalkan dan menghapus semua data terkait.`)) return;
+    try {
+      await api.deleteTenant(t.id);
+      toast.success("Tenant dihapus");
+      loadTenants();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus tenant");
+    }
+  }
+
+  function planLabel(t: Tenant): string {
+    return t.subscription?.plan?.label ?? t.subscription?.plan?.name ?? "-";
+  }
+
+  function subAmount(t: Tenant): number {
+    return t.subscription?.amount ?? 0;
+  }
+
+  function statusOf(t: Tenant): string {
+    return t.subscription?.status ?? "trial";
+  }
+
+  // Filter di sisi klien untuk UX cepat; API juga mendukung server-side filter.
   const filteredTenants = tenants.filter((t) => {
-    const matchesSearch =
-      t.name.toLowerCase().includes(search.toLowerCase()) ||
-      t.owner_name.toLowerCase().includes(search.toLowerCase()) ||
-      t.email.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = filterStatus === "all" || t.status === filterStatus;
+    const q = search.toLowerCase();
+    const matchesSearch = !q || t.nama.toLowerCase().includes(q) || t.email.toLowerCase().includes(q);
+    const matchesStatus = filterStatus === "all" || statusOf(t) === filterStatus;
     return matchesSearch && matchesStatus;
   });
 
@@ -81,7 +206,7 @@ export default function TenantsPage() {
       <PageHeader
         title="Tenants"
         subtitle="Kelola semua bisnis laundry"
-        action={<Button>+ Add Tenant</Button>}
+        action={<Button onClick={openCreate}>+ Add Tenant</Button>}
       />
 
       {/* Filters */}
@@ -89,7 +214,7 @@ export default function TenantsPage() {
         <div className="flex-1">
           <Input
             type="text"
-            placeholder="Cari nama / pemilik / email..."
+            placeholder="Cari nama / email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -118,48 +243,132 @@ export default function TenantsPage() {
             <DataTable.Th>Plan</DataTable.Th>
             <DataTable.Th>Status</DataTable.Th>
             <DataTable.Th align="right">Orders</DataTable.Th>
-            <DataTable.Th align="right">Revenue</DataTable.Th>
+            <DataTable.Th align="right">Tagihan/Bln</DataTable.Th>
             <DataTable.Th align="right">Aksi</DataTable.Th>
           </DataTable.Head>
           <DataTable.Body>
-            {filteredTenants.map((tenant) => (
-              <DataTable.Tr
-                key={tenant.id}
-                className="cursor-pointer"
-                onClick={() => router.push(`/superadmin/tenants/${tenant.id}`)}
-              >
-                <DataTable.Td>
-                  <div>
-                    <p className="text-sm font-medium text-slate-800">{tenant.name}</p>
-                    <p className="text-xs text-slate-400">{tenant.owner_name}</p>
-                    <p className="text-xs text-slate-400">{tenant.email}</p>
-                  </div>
-                </DataTable.Td>
-                <DataTable.Td>
-                  <span className="text-sm text-slate-600">{tenant.plan}</span>
-                </DataTable.Td>
-                <DataTable.Td>
-                  <Badge color={STATUS_COLOR[tenant.status]}>{tenant.status}</Badge>
-                </DataTable.Td>
-                <DataTable.Td align="right">
-                  <span className="text-sm text-slate-600">{tenant.orders_count.toLocaleString("id-ID")}</span>
-                </DataTable.Td>
-                <DataTable.Td align="right">
-                  <span className="text-sm text-slate-600">
-                    {tenant.revenue > 0 ? `${formatRupiah(tenant.revenue)}/bln` : "-"}
-                  </span>
-                </DataTable.Td>
-                <DataTable.Td align="right">
-                  <div className="flex justify-end gap-2">
-                    <button className="text-sm text-brand-600 hover:text-brand-700 font-medium">Edit</button>
-                    <button className="text-sm text-red-600 hover:text-red-700 font-medium">Suspend</button>
-                  </div>
-                </DataTable.Td>
-              </DataTable.Tr>
-            ))}
+            {filteredTenants.map((tenant) => {
+              const st = statusOf(tenant);
+              return (
+                <DataTable.Tr key={tenant.id}>
+                  <DataTable.Td>
+                    <button
+                      onClick={() => router.push(`/superadmin/tenants/${tenant.id}`)}
+                      className="text-left group"
+                    >
+                      <p className="text-sm font-medium text-slate-800 group-hover:text-brand-700">{tenant.nama}</p>
+                      <p className="text-xs text-slate-400">{tenant.email}</p>
+                    </button>
+                  </DataTable.Td>
+                  <DataTable.Td>
+                    <span className="text-sm text-slate-600">{planLabel(tenant)}</span>
+                  </DataTable.Td>
+                  <DataTable.Td>
+                    <Badge color={STATUS_COLOR[st] ?? "slate"}>{st}</Badge>
+                  </DataTable.Td>
+                  <DataTable.Td align="right">
+                    <span className="text-sm text-slate-600">{(tenant.orders_count ?? 0).toLocaleString("id-ID")}</span>
+                  </DataTable.Td>
+                  <DataTable.Td align="right">
+                    <span className="text-sm text-slate-600">
+                      {subAmount(tenant) > 0 ? `${formatRupiah(subAmount(tenant))}/bln` : "-"}
+                    </span>
+                  </DataTable.Td>
+                  <DataTable.Td align="right">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => openEdit(tenant)}
+                        className="text-sm text-brand-600 hover:text-brand-700 font-medium"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(tenant)}
+                        className="text-sm text-red-600 hover:text-red-700 font-medium"
+                      >
+                        Hapus
+                      </button>
+                    </div>
+                  </DataTable.Td>
+                </DataTable.Tr>
+              );
+            })}
           </DataTable.Body>
         </DataTable>
       )}
+
+      {/* Create / Edit Modal */}
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editing ? "Edit Tenant" : "Tambah Tenant"}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setModalOpen(false)} disabled={saving}>
+              Batal
+            </Button>
+            <Button type="submit" form="tenant-form" loading={saving}>
+              {editing ? "Simpan" : "Buat Tenant"}
+            </Button>
+          </>
+        }
+      >
+        <form id="tenant-form" onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Nama Usaha / Pemilik"
+            value={form.nama}
+            onChange={(e) => setForm({ ...form, nama: e.target.value })}
+            required
+          />
+          <Input
+            label="Email"
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            required
+          />
+          <Input
+            label="No. Telepon (opsional)"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          />
+          <Select
+            label="Paket"
+            value={form.plan_id}
+            onChange={(e) => setForm({ ...form, plan_id: Number(e.target.value) })}
+          >
+            {plans.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label} {p.price_monthly > 0 ? `— ${formatRupiah(p.price_monthly)}/bln` : "(gratis)"}
+              </option>
+            ))}
+          </Select>
+          {!editing && (
+            <>
+              <Input
+                label="Password"
+                type="password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                hint="Minimal 6 karakter"
+                required
+              />
+              <Input
+                label="Konfirmasi Password"
+                type="password"
+                value={form.password_confirmation}
+                onChange={(e) => setForm({ ...form, password_confirmation: e.target.value })}
+                required
+              />
+            </>
+          )}
+          {editing && (
+            <p className="text-xs text-slate-500">
+              Password tidak diubah dari sini — gunakan tombol "Reset Password" di halaman detail tenant.
+            </p>
+          )}
+        </form>
+      </Modal>
     </div>
   );
 }

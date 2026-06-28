@@ -41,19 +41,25 @@ const NAV_SECTIONS = [
 export default function DesktopLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, loading, isAuthenticated, isImpersonating, restoreAdmin } = useAuth();
 
   useEffect(() => {
     if (!loading) {
       if (!isAuthenticated) {
         router.replace("/login?next=/desktop/dashboard");
-      } else if (user?.role === "superadmin") {
+      } else if (user?.role === "superadmin" && !isImpersonating) {
+        // Superadmin asli (bukan sedang impersonate) tidak boleh lihat panel tenant.
         router.replace("/superadmin");
       } else if (user?.role !== "pemilik" && user?.role !== "kasir") {
         router.replace("/dashboard");
       }
     }
-  }, [loading, isAuthenticated, user, router]);
+  }, [loading, isAuthenticated, user, isImpersonating, router]);
+
+  function handleReturnToAdmin() {
+    restoreAdmin();
+    router.push("/superadmin");
+  }
 
   if (loading || !isAuthenticated || (user?.role !== "pemilik" && user?.role !== "kasir")) {
     return <FullPageSpinner label="Memuat..." />;
@@ -118,6 +124,19 @@ export default function DesktopLayout({ children }: { children: React.ReactNode 
 
       {/* Main content */}
       <main className="flex-1 ml-64 min-h-screen">
+        {isImpersonating && (
+          <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center justify-between gap-4">
+            <p className="text-sm text-amber-800">
+              Anda sedang login sebagai tenant <span className="font-semibold">{user?.nama}</span> (mode impersonasi).
+            </p>
+            <button
+              onClick={handleReturnToAdmin}
+              className="shrink-0 text-sm font-medium text-amber-800 hover:text-amber-900 underline underline-offset-2"
+            >
+              ← Kembali ke Panel Admin
+            </button>
+          </div>
+        )}
         <div className="p-6">
           {children}
         </div>

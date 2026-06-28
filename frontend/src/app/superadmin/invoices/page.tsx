@@ -1,45 +1,46 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui/Spinner";
+import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/Toast";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { DataTable } from "@/components/admin/DataTable";
 import { formatRupiah } from "@/lib/format";
 
+// ==========================================================
+// Invoices & Pembayaran — tagihan bulanan tenant.
+// Generate manual (tombol) + tandai lunas per-invoice.
+// ==========================================================
+
+type InvoiceStatus = "paid" | "pending" | "overdue" | "cancelled";
+
 interface Invoice {
-  id: string;
-  tenant_name: string;
+  id: number;
+  invoice_number: string;
   tenant_id: number;
-  plan: string;
+  tenant?: { nama: string; email: string } | null;
   amount: number;
-  status: "paid" | "pending" | "overdue" | "cancelled";
-  due_date: string;
-  paid_date: string | null;
+  plan_name: string;
   billing_period: string;
+  status: InvoiceStatus;
+  due_date: string;
+  paid_at: string | null;
 }
 
-const MOCK_INVOICES: Invoice[] = [
-  { id: "INV-2024-001", tenant_name: "Laundry Bersih", tenant_id: 1, plan: "Pro", amount: 99000, status: "paid", due_date: "2024-03-15", paid_date: "2024-03-14", billing_period: "Mar 2024" },
-  { id: "INV-2024-002", tenant_name: "Cuci Bersih", tenant_id: 2, plan: "Enterprise", amount: 299000, status: "paid", due_date: "2024-03-20", paid_date: "2024-03-19", billing_period: "Mar 2024" },
-  { id: "INV-2024-003", tenant_name: "Laundry Express", tenant_id: 3, plan: "Pro", amount: 99000, status: "pending", due_date: "2024-04-10", paid_date: null, billing_period: "Apr 2024" },
-  { id: "INV-2024-004", tenant_name: "Laundry Kilat", tenant_id: 5, plan: "Pro", amount: 99000, status: "overdue", due_date: "2024-03-05", paid_date: null, billing_period: "Mar 2024" },
-  { id: "INV-2024-005", tenant_name: "Laundry Bersih", tenant_id: 1, plan: "Pro", amount: 99000, status: "paid", due_date: "2024-02-15", paid_date: "2024-02-14", billing_period: "Feb 2024" },
-  { id: "INV-2024-006", tenant_name: "Cuci Bersih", tenant_id: 2, plan: "Enterprise", amount: 299000, status: "paid", due_date: "2024-02-20", paid_date: "2024-02-19", billing_period: "Feb 2024" },
-  { id: "INV-2024-007", tenant_name: "Clean Master", tenant_id: 4, plan: "Free", amount: 0, status: "paid", due_date: "2024-03-25", paid_date: "2024-03-25", billing_period: "Mar 2024" },
-];
-
-const STATUS_COLOR: Record<Invoice["status"], "emerald" | "amber" | "red" | "slate"> = {
+const STATUS_COLOR: Record<InvoiceStatus, "emerald" | "amber" | "red" | "slate"> = {
   paid: "emerald",
   pending: "amber",
   overdue: "red",
   cancelled: "slate",
 };
 
-const STATUS_LABEL: Record<Invoice["status"], string> = {
+const STATUS_LABEL: Record<InvoiceStatus, string> = {
   paid: "Lunas",
   pending: "Menunggu",
   overdue: "Jatuh Tempo",
@@ -47,28 +48,69 @@ const STATUS_LABEL: Record<Invoice["status"], string> = {
 };
 
 export default function InvoicesPage() {
+  const toast = useToast();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [markingId, setMarkingId] = useState<number | null>(null);
 
   useEffect(() => {
-    setTimeout(() => {
-      setInvoices(MOCK_INVOICES);
-      setLoading(false);
-    }, 500);
+    loadInvoices();
   }, []);
 
+  async function loadInvoices() {
+    setLoading(true);
+    try {
+      const res = await api.getSuperAdminInvoices();
+      setInvoices(res.data ?? []);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal memuat invoice");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGenerate() {
+    if (!confirm("Generate tagihan untuk semua subscription aktif/trial bulan ini? Tenant yang sudah punya tagihan bulan ini akan dilewati.")) return;
+    setGenerating(true);
+    try {
+      const res = await api.generateInvoices();
+      toast.success(res.message);
+      loadInvoices();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal generate tagihan");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function handleMarkPaid(inv: Invoice) {
+    setMarkingId(inv.id);
+    try {
+      await api.markInvoicePaid(inv.id);
+      toast.success(`Invoice ${inv.invoice_number} ditandai lunas`);
+      loadInvoices();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menandai invoice");
+    } finally {
+      setMarkingId(null);
+    }
+  }
+
   const filtered = invoices.filter((inv) => {
-    const matchesSearch =
-      inv.tenant_name.toLowerCase().includes(search.toLowerCase()) ||
-      inv.id.toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    const tenantName = inv.tenant?.nama ?? "";
+    const matchesSearch = !q || tenantName.toLowerCase().includes(q) || inv.invoice_number.toLowerCase().includes(q);
     const matchesStatus = filterStatus === "all" || inv.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
 
   const totalRevenue = invoices.filter((i) => i.status === "paid").reduce((s, i) => s + i.amount, 0);
-  const pendingAmount = invoices.filter((i) => i.status === "pending" || i.status === "overdue").reduce((s, i) => s + i.amount, 0);
+  const pendingAmount = invoices
+    .filter((i) => i.status === "pending" || i.status === "overdue")
+    .reduce((s, i) => s + i.amount, 0);
   const overdueCount = invoices.filter((i) => i.status === "overdue").length;
 
   if (loading) {
@@ -81,7 +123,15 @@ export default function InvoicesPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Invoices & Pembayaran" subtitle="Kelola tagihan dan pembayaran tenant" />
+      <PageHeader
+        title="Invoices & Pembayaran"
+        subtitle="Kelola tagihan dan pembayaran tenant"
+        action={
+          <Button onClick={handleGenerate} loading={generating}>
+            + Generate Tagihan Bulan Ini
+          </Button>
+        }
+      />
 
       {/* Summary stats — responsive */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -114,7 +164,10 @@ export default function InvoicesPage() {
 
       {/* Table */}
       {filtered.length === 0 ? (
-        <EmptyState title="Tidak ada invoice" description="Belum ada invoice yang cocok dengan filter." />
+        <EmptyState
+          title="Tidak ada invoice"
+          description="Klik Generate Tagihan Bulan Ini untuk membuat tagihan dari subscription aktif."
+        />
       ) : (
         <DataTable>
           <DataTable.Head>
@@ -125,21 +178,22 @@ export default function InvoicesPage() {
             <DataTable.Th>Status</DataTable.Th>
             <DataTable.Th>Jatuh Tempo</DataTable.Th>
             <DataTable.Th align="right">Jumlah</DataTable.Th>
+            <DataTable.Th align="right">Aksi</DataTable.Th>
           </DataTable.Head>
           <DataTable.Body>
             {filtered.map((inv) => (
               <DataTable.Tr key={inv.id}>
                 <DataTable.Td>
-                  <span className="font-medium text-brand-600">{inv.id}</span>
+                  <span className="font-medium text-brand-600">{inv.invoice_number}</span>
                 </DataTable.Td>
                 <DataTable.Td>
                   <div>
-                    <p className="font-medium text-slate-800">{inv.tenant_name}</p>
-                    <p className="text-xs text-slate-400">ID: {inv.tenant_id}</p>
+                    <p className="font-medium text-slate-800">{inv.tenant?.nama ?? "-"}</p>
+                    <p className="text-xs text-slate-400">{inv.tenant?.email ?? ""}</p>
                   </div>
                 </DataTable.Td>
                 <DataTable.Td>
-                  <span className="text-slate-600">{inv.plan}</span>
+                  <span className="text-slate-600">{inv.plan_name}</span>
                 </DataTable.Td>
                 <DataTable.Td>
                   <span className="text-slate-500">{inv.billing_period}</span>
@@ -154,6 +208,17 @@ export default function InvoicesPage() {
                   <span className="font-semibold text-slate-800">
                     {inv.amount > 0 ? formatRupiah(inv.amount) : "Free"}
                   </span>
+                </DataTable.Td>
+                <DataTable.Td align="right">
+                  {(inv.status === "pending" || inv.status === "overdue") && (
+                    <button
+                      onClick={() => handleMarkPaid(inv)}
+                      disabled={markingId === inv.id}
+                      className="text-sm text-emerald-600 hover:text-emerald-700 font-medium disabled:opacity-50"
+                    >
+                      {markingId === inv.id ? "..." : "Tandai Lunas"}
+                    </button>
+                  )}
                 </DataTable.Td>
               </DataTable.Tr>
             ))}
