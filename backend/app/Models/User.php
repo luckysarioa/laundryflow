@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -47,9 +48,15 @@ class User extends Authenticatable
         return $this->hasOne(Outlet::class);
     }
 
-    public function orders(): HasMany
+    /**
+     * Orders milik user (pemilik) ditempuh via Outlet: User → Outlet → Order.
+     * Tabel orders TIDAK punya kolom user_id (hanya outlet_id + customer_id),
+     * jadi hasMany biasa akan mencari user_id & melempar SQL error.
+     * hasManyThrough me-resolve via outlets.user_id → orders.outlet_id.
+     */
+    public function orders(): HasManyThrough
     {
-        return $this->hasMany(Order::class);
+        return $this->hasManyThrough(Order::class, Outlet::class);
     }
 
     public function notifications(): HasMany
