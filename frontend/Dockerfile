@@ -19,11 +19,16 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # ARG agar NEXT_PUBLIC_* bisa di-inject saat build (build-time variables).
-# DEFAULT: mode mock aktif. Saat deploy full-stack, override via build args
-# (lihat docker-compose.yml: args → NEXT_PUBLIC_USE_MOCK=false).
+# DEFAULT: mode mock NONAKTIF (false). Alasan: Coolify mem-build Dockerfile ini
+# langsung (TIDAK lewat docker-compose.yml, jadi args di compose tidak ikut).
+# Jika default true, frontend produksi akan berjalan di mode mock → semua
+# panggilan API return data dummy & TIDAK menyimpan ke DB (gejala: "tenant
+# berhasil dibuat tapi data tidak tersimpan").
+# Untuk dev lokal yang belum punya backend, set -e NEXT_PUBLIC_USE_MOCK=true
+# saat docker build, atau pakai docker-compose.yml (sudah override ke false).
 # NEXT_PUBLIC_API_URL default "/api" (relatif) → browser memanggil same-origin,
 # lalu Next.js mem-proxy ke BACKEND_URL via rewrites() (lihat next.config.ts).
-ARG NEXT_PUBLIC_USE_MOCK=true
+ARG NEXT_PUBLIC_USE_MOCK=false
 ARG NEXT_PUBLIC_API_URL=/api
 # BACKEND_URL: tujuan proxy /api/* (server-side, di dalam jaringan Docker).
 # Dievaluasi saat build oleh rewrites() — bake nilai stabil: nama service backend.
