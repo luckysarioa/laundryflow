@@ -13,6 +13,7 @@ class Subscription extends Model
     protected $fillable = [
         'user_id',
         'plan_id',
+        'amount',
         'status',
         'trial_ends_at',
         'current_period_start',
@@ -119,6 +120,24 @@ class Subscription extends Model
             'status' => 'active',
             'current_period_start' => now(),
             'current_period_end' => now()->addDays($days),
+        ]);
+    }
+
+    /**
+     * Perpanjang periode aktif sebanyak N hari. Berbeda dari activate(): bila masa
+     * aktif masih berjalan, tambahkan dari current_period_end agar tenant tidak
+     * "kehilangan" sisa hari. Dipakai endpoint superadmin extend-subscription.
+     */
+    public function extend(int $days): void
+    {
+        $base = ($this->current_period_end && $this->current_period_end->isFuture())
+            ? $this->current_period_end
+            : now();
+
+        $this->update([
+            'status' => 'active',
+            'current_period_start' => $this->current_period_start ?? now(),
+            'current_period_end' => $base->addDays($days),
         ]);
     }
 

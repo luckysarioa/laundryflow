@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\SuperAdmin\SystemSettingsController;
 use App\Http\Controllers\Api\SuperAdmin\SuperAdminUserController;
 use App\Http\Controllers\Api\SuperAdmin\SuperAdminActivityLogController;
 use App\Http\Controllers\Api\SuperAdmin\SuperAdminBackupController;
+use App\Http\Controllers\Api\SuperAdmin\InvoiceController;
 use Illuminate\Support\Facades\Route;
 
 // ==========================================================
@@ -182,8 +183,15 @@ Route::middleware(['auth:sanctum', 'subscription'])->group(function () {
 
         // Tenants Management
         Route::get('tenants', [TenantController::class, 'index']);
+        Route::post('tenants', [TenantController::class, 'store']);
+        Route::post('tenants/generate-invoices', [TenantController::class, 'generateInvoices']);
         Route::get('tenants/{tenant}', [TenantController::class, 'show']);
+        Route::patch('tenants/{tenant}', [TenantController::class, 'update']);
+        Route::delete('tenants/{tenant}', [TenantController::class, 'destroy']);
         Route::patch('tenants/{tenant}/status', [TenantController::class, 'updateStatus']);
+        Route::post('tenants/{tenant}/reset-password', [TenantController::class, 'resetPassword']);
+        Route::post('tenants/{tenant}/impersonate', [TenantController::class, 'impersonate']);
+        Route::post('tenants/{tenant}/extend', [TenantController::class, 'extendSubscription']);
 
         // Plans Management
         Route::get('plans', [SuperAdminSubscriptionController::class, 'plans']);
@@ -194,6 +202,10 @@ Route::middleware(['auth:sanctum', 'subscription'])->group(function () {
         // Subscriptions Management
         Route::get('subscriptions', [SuperAdminSubscriptionController::class, 'subscriptions']);
         Route::get('subscriptions/stats', [SuperAdminSubscriptionController::class, 'stats']);
+
+        // Invoices Management
+        Route::get('invoices', [InvoiceController::class, 'index']);
+        Route::patch('invoices/{invoice}/mark-paid', [InvoiceController::class, 'markPaid']);
 
         // Revenue
         Route::get('revenue', [RevenueController::class, 'index']);
