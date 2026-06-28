@@ -47,6 +47,13 @@ export const ROLES: Record<Role, string> = {
 /** Kunci penyimpanan session di localStorage. */
 export const AUTH_STORAGE_KEY = "laundryflow_session";
 
+/**
+ * Kunci backup session superadmin saat sedang impersonate tenant.
+ * Session superadmin asli disimpan sementara di sini agar bisa dipulihkan
+ * saat admin selesai "login sebagai tenant".
+ */
+export const ADMIN_BACKUP_KEY = "laundryflow_admin_session";
+
 /** Nama aplikasi & metadata PWA. */
 export const APP_NAME = "LaundryFlow";
 export const APP_TAGLINE = "Manajemen Laundry UMKM";

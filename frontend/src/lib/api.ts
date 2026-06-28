@@ -751,6 +751,105 @@ export const api = {
     });
   },
 
+  async createTenant(input: {
+    nama: string;
+    email: string;
+    password: string;
+    password_confirmation: string;
+    phone?: string;
+    plan_id: number;
+    status?: "trial" | "active";
+  }): Promise<any> {
+    if (USE_MOCK) {
+      return {
+        message: "Tenant created",
+        tenant: {
+          id: Date.now(),
+          nama: input.nama,
+          email: input.email,
+          role: "pemilik",
+          subscription: { status: input.status ?? "trial", plan: { label: "Pro" } },
+          orders_count: 0,
+        },
+      };
+    }
+    return http("/superadmin/tenants", { method: "POST", body: JSON.stringify(input) });
+  },
+
+  async updateTenant(
+    id: number,
+    input: { nama?: string; email?: string; phone?: string; plan_id?: number },
+  ): Promise<any> {
+    if (USE_MOCK) return { message: "Tenant updated", tenant: { id, ...input } };
+    return http(`/superadmin/tenants/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+  },
+
+  async deleteTenant(id: number): Promise<any> {
+    if (USE_MOCK) return { message: "Tenant deleted" };
+    return http(`/superadmin/tenants/${id}`, { method: "DELETE" });
+  },
+
+  async resetTenantPassword(
+    id: number,
+    password: string,
+    password_confirmation: string,
+  ): Promise<any> {
+    if (USE_MOCK) return { message: "Password tenant berhasil direset" };
+    return http(`/superadmin/tenants/${id}/reset-password`, {
+      method: "POST",
+      body: JSON.stringify({ password, password_confirmation }),
+    });
+  },
+
+  async impersonateTenant(id: number): Promise<{ token: string; user: any }> {
+    if (USE_MOCK) {
+      return {
+        token: "mock-impersonation-token",
+        user: { id, nama: "Tenant Demo", email: "tenant@demo.id", role: "pemilik" },
+      };
+    }
+    return http(`/superadmin/tenants/${id}/impersonate`, { method: "POST" });
+  },
+
+  async extendTenantSubscription(id: number, days: number): Promise<any> {
+    if (USE_MOCK) return { message: "Langganan diperpanjang", subscription: { current_period_end: new Date().toISOString() } };
+    return http(`/superadmin/tenants/${id}/extend`, {
+      method: "POST",
+      body: JSON.stringify({ days }),
+    });
+  },
+
+  async generateInvoices(): Promise<{ generated: number; message: string }> {
+    if (USE_MOCK) return { generated: 3, message: "3 tagihan dibuat" };
+    return http("/superadmin/tenants/generate-invoices", { method: "POST" });
+  },
+
+  async getSuperAdminInvoices(params?: { search?: string; status?: string; page?: number }): Promise<any> {
+    if (USE_MOCK) {
+      return {
+        data: [
+          { id: 1, invoice_number: "INV-202606-001", tenant_id: 1, tenant: { nama: "Laundry Bersih", email: "budi@laundrybersih.com" }, amount: 99000, plan_name: "Pro", billing_period: "2026-06", status: "pending", due_date: "2026-06-30", paid_at: null },
+          { id: 2, invoice_number: "INV-202605-001", tenant_id: 1, tenant: { nama: "Laundry Bersih", email: "budi@laundrybersih.com" }, amount: 99000, plan_name: "Pro", billing_period: "2026-05", status: "paid", due_date: "2026-05-31", paid_at: "2026-05-28" },
+        ],
+        current_page: 1,
+        last_page: 1,
+        per_page: 15,
+        total: 2,
+      };
+    }
+    const searchParams = new URLSearchParams();
+    if (params?.search) searchParams.set("search", params.search);
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.page) searchParams.set("page", String(params.page));
+    const qs = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return http(`/superadmin/invoices${qs}`);
+  },
+
+  async markInvoicePaid(id: number): Promise<any> {
+    if (USE_MOCK) return { message: "Invoice ditandai lunas", invoice: { id, status: "paid" } };
+    return http(`/superadmin/invoices/${id}/mark-paid`, { method: "PATCH" });
+  },
+
   async getSuperAdminPlans(): Promise<any[]> {
     if (USE_MOCK) {
       return [
